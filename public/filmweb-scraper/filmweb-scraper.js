@@ -1,15 +1,20 @@
 /**
  * ============================================================
 
- *  CineBridge – Filmweb Browser Scraper  v2.2
+ *  CineBridge – Filmweb Browser Scraper  v2.4
 
  * ============================================================
- *
+ * 
  * Jak używać:
  *  1. Zaloguj się na filmweb.pl
  *  2. Otwórz DevTools → Console (F12)
  *  3. Wklej cały ten skrypt i naciśnij Enter
  *  4. Postępuj zgodnie z instrukcjami w konsoli
+ 
+ * UWAGA: Jeśli dostaniesz alert o wygasłej sesji:
+ * - Odśwież kartę z filmweb.pl (zaloguj się ponownie, jeśli trzeba).
+ * - Otwórz konsolę i wklej ten sam skrypt jeszcze raz.
+ * - Automatycznie pominie już zebrane pozycje i doczyta resztę.
  *
  * Co skrypt zbiera:
  *  – Oceny filmów i seriali (1-10)
@@ -29,12 +34,12 @@
 (async function cineBridgeScraper() {
   console.clear();
   console.log("===============================================");
-  console.log("  CineBridge - Filmweb Scraper v2.2");
+  console.log("  CineBridge - Filmweb Scraper v2.4 (z ETA)");
   console.log("===============================================");
 
   var CHECKPOINT_KEY = "cineBridgeCheckpoint";
+  var scriptStartTime = Date.now();
 
-  // Wyciagnij token CSRF z ciasteczek Filmweb
   function getCsrfToken() {
     var match = document.cookie.match(/(?:^|;\s*)_csrf=([^;]+)/);
     if (match) return decodeURIComponent(match[1]);
@@ -51,18 +56,34 @@
   console.log("");
 
   var BASE = "https://www.filmweb.pl/api/v1";
-  var DELAY = 700; // zwiekszony odstep miedzy requestami
+  var DELAY = 600;
   var allItems = [];
   var errors = 0;
   var counter = 0;
+  var userId = null;
   var processedKeys = new Set();
+
+  // ── Formatowanie czasu ──────────────────────────────────────
+  function formatDuration(ms) {
+    if (ms < 0 || !isFinite(ms)) ms = 0;
+    var totalSec = Math.round(ms / 1000);
+    var h = Math.floor(totalSec / 3600);
+    var m = Math.floor((totalSec % 3600) / 60);
+    var s = totalSec % 60;
+    var parts = [];
+    if (h > 0) parts.push(h + "h");
+    if (m > 0 || h > 0) parts.push(m + "m");
+    parts.push(s + "s");
+    return parts.join(" ");
+  }
 
   // ── Checkpoint: wczytaj poprzedni postep, jesli istnieje ──
   (function loadCheckpoint() {
     try {
       var saved = localStorage.getItem(CHECKPOINT_KEY);
       if (saved) {
-        allItems = JSON.parse(saved);
+        var parsed = JSON.parse(saved);
+        allItems = parsed.items || [];
         counter = allItems.length;
         allItems.forEach(function(item) {
           processedKeys.add(item.type + ":" + item.filmweb_id + ":" + item.category);
@@ -94,8 +115,7 @@
 
   function saveCheckpoint() {
     try {
-      localStorage.setItem(CHECKPOINT_KEY, JSON.stringify(allItems));
-      console.log("[checkpoint] zapisano " + allItems.length + " pozycji do localStorage.");
+      localStorage.setItem(CHECKPOINT_KEY, JSON.stringify({ items: allItems }));
     } catch (e) {
       console.warn("[checkpoint] nie udalo sie zapisac checkpointu", e);
     }
@@ -105,11 +125,7 @@
     attempt = attempt || 1;
     await sleep(DELAY);
 
-    var headers = {
-      "Accept": "application/json",
-      "X-Locale": "pl"
-    };
-
+    var headers = { "Accept": "application/json", "X-Locale": "pl" };
     if (csrfToken) {
       headers["X-Csrf-Token"] = csrfToken;
       headers["X-CSRF-TOKEN"] = csrfToken;
@@ -132,18 +148,24 @@
         console.warn("  [401] proba " + attempt + "/3 dla " + endpoint + " - odswiezam token i ponawiam...");
         var freshToken = getCsrfToken();
         if (freshToken) csrfToken = freshToken;
-        await sleep(1500 * attempt); // backoff: 1.5s, 3s, 4.5s
+        await sleep(1500 * attempt);
         return fetchApi(endpoint, attempt + 1);
       } else {
         saveCheckpoint();
         var msg = "Sesja Filmweb wygasla (401) przy zapytaniu:\n" + endpoint +
           "\n\nCo zrobic:\n" +
           "1) Odswiez strone filmweb.pl w TEJ karcie (zaloguj sie ponownie jesli to konieczne)\n" +
-          "2) Otworz ponownie konsole i wklej caly skrypt jeszcze raz\n" +
-          "3) Skrypt automatycznie pominie " + allItems.length + " juz pobranych pozycji (checkpoint w localStorage)";
+          "2) Wklej caly skrypt jeszcze raz do konsoli\n" +
+          "3) Skrypt pominie " + allItems.length + " juz pobranych pozycji (checkpoint w localStorage)";
         alert(msg);
         throw new Error("SESSION_EXPIRED: " + endpoint);
       }
+    }
+
+    if (resp && resp.status === 429) {
+      console.warn("[429] rate limit, czekam 15s...");
+      await sleep(15000);
+      return fetchApi(endpoint, attempt);
     }
 
     if (!resp || !resp.ok) {
@@ -154,12 +176,23 @@
     return resp.json();
   }
 
+  async function fetchUserId() {
+    var info = await fetchApi("logged/info");
+    if (info && info.id) {
+      console.log("Zalogowany jako: " + info.name + " (ID: " + info.id + ")");
+      return info.id;
+    }
+    console.warn("[!] Nie udalo sie pobrac ID uzytkownika - komentarze nie beda pobierane");
+    return null;
+  }
+
   async function fetchAllVotePages(entityName) {
     var page = 1;
     var allVotes = [];
     while (true) {
       var data = await fetchApi("logged/vote/title/" + entityName + "?page=" + page);
       if (!data || !Array.isArray(data) || data.length === 0) break;
+      data.forEach(function(v) { v._entityName = entityName; });
       allVotes.push.apply(allVotes, data);
       console.log("  [ok] " + entityName + " strona " + page + " (" + data.length + " pozycji)");
       page++;
@@ -169,34 +202,41 @@
 
   function parseVote(vote) {
     return {
-      id:       vote.entity || vote.id || null,
-      rate:     vote.rate   || null,
-      viewDate: formatDate(vote.viewDate),
-      favorite: vote.favorite ? "tak" : "nie",
-      comment:  vote.comment || ""
+      id:         vote.entity || vote.id || null,
+      rate:       vote.rate   || null,
+      viewDate:   formatDate(vote.viewDate),
+      favorite:   vote.favorite ? "tak" : "nie",
+      comment:    vote.comment || "",
+      entityName: vote._entityName || null
     };
   }
 
+  async function fetchComment(id, entityName) {
+    if (!userId || !entityName) return "";
+    var data = await fetchApi("users/" + userId + "/votes/" + entityName + "/" + id);
+    if (data && data.comment) return data.comment;
+    return "";
+  }
 
+  // ── Zwraca true jesli faktycznie wykonano requesty (nie bylo skip) ──
   async function enrichAndPush(vote, type, category, listName) {
     var id = vote.id;
-    if (!id) return;
+    if (!id) return false;
 
     var key = type + ":" + id + ":" + category;
-    if (processedKeys.has(key)) {
-      return; // juz pobrane w poprzedniej sesji
-    }
+    if (processedKeys.has(key)) return false; // juz pobrane - skip, bez requestow
 
     var info = await fetchApi("title/" + id + "/info");
-    if (!info) return;
+    if (!info) return true; // requesty byly, ale nieudane
 
     var ratingData = await fetchApi("film/" + id + "/rating");
 
-    counter++;
-    if (counter % 20 === 0) {
-      console.log("  ... lacznie " + counter + " pozycji");
-      saveCheckpoint(); // okresowy autozapis co 20 pozycji
+    var comment = "";
+    if (category === "watched") {
+      comment = await fetchComment(id, vote.entityName);
     }
+
+    counter++;
 
     allItems.push({
       type:           type,
@@ -209,7 +249,7 @@
       user_rating:    (vote.rate && vote.rate > 0) ? vote.rate : "",
       rated_at:       vote.viewDate                || "",
       watched_at:     vote.viewDate                || "",
-      comment:        vote.comment                 || "",
+      comment:        comment,
       list_name:      listName                     || "",
       favorite:       vote.favorite                || "nie",
       filmweb_rating: ratingData ? (ratingData.rate  || "") : "",
@@ -217,20 +257,17 @@
     });
 
     processedKeys.add(key);
+    return true;
   }
 
   async function pushWatchlistItem(id, type) {
     var key = type + ":" + id + ":watchlist";
-    if (processedKeys.has(key)) return;
+    if (processedKeys.has(key)) return false;
 
     var info = await fetchApi("title/" + id + "/info");
-    if (!info) return;
+    if (!info) return true;
 
     counter++;
-    if (counter % 20 === 0) {
-      console.log("  ... lacznie " + counter + " pozycji");
-      saveCheckpoint();
-    }
 
     allItems.push({
       type: type, title: csvEscape(info.title || ""),
@@ -242,71 +279,45 @@
     });
 
     processedKeys.add(key);
+    return true;
   }
 
-  try {
-    // ── 1. Ocenione filmy ────────────────────────────────────
-    console.log("[1/4] Pobieranie ocenionych filmow...");
-    var filmVotes = await fetchAllVotePages("film");
-    console.log("      Znaleziono " + filmVotes.length + " filmow, pobieram szczegoly...");
-    for (var i = 0; i < filmVotes.length; i++) {
-      await enrichAndPush(parseVote(filmVotes[i]), "movie", "watched", "");
+  // ── Generyczna petla z ETA i checkpointem ────────────────────
+  async function runPhaseLoop(items, phaseLabel, estRequestsPerItem, workerFn) {
+    var total = items.length;
+    if (total === 0) {
+      console.log("      Brak pozycji w tej fazie.");
+      return;
     }
 
-    console.log("      Pauza przed kolejnym etapem...");
-    await sleep(3000);
+    var phaseStart = Date.now();
+    var workDone = 0; // ile pozycji faktycznie wymagalo requestow (nie skip)
+    var roughEstMs = total * estRequestsPerItem * DELAY;
 
-    // ── 2. Ocenione seriale ──────────────────────────────────
-    console.log("[2/4] Pobieranie ocenionych seriali...");
-    var serialVotes = await fetchAllVotePages("serial");
-    var tvshowVotes = await fetchAllVotePages("tvshow");
-    var allSerialVotes = serialVotes.concat(tvshowVotes);
-    console.log("      Znaleziono " + allSerialVotes.length + " seriali, pobieram szczegoly...");
-    for (var j = 0; j < allSerialVotes.length; j++) {
-      await enrichAndPush(parseVote(allSerialVotes[j]), "show", "watched", "");
-    }
+    console.log("      Szacowany czas (bez checkpointu): ~" + formatDuration(roughEstMs));
 
-    await sleep(3000);
+    for (var idx = 0; idx < total; idx++) {
+      var didWork = await workerFn(items[idx]);
+      if (didWork) workDone++;
 
-    // ── 3. Chce zobaczyc – filmy ─────────────────────────────
-    console.log("[3/4] Pobieranie watchlisty (filmy)...");
-    var wlFilmRaw = await fetchApi("logged/want2see?entityName=film");
-    if (Array.isArray(wlFilmRaw)) {
-      var wlFilmIds = wlFilmRaw.filter(function(e) { return Array.isArray(e) ? e[1] > 0 : true; })
-                               .map(function(e) { return Array.isArray(e) ? e[0] : e; });
-      console.log("      Znaleziono " + wlFilmIds.length + " filmow na watchliscie");
-      for (var k = 0; k < wlFilmIds.length; k++) {
-        await pushWatchlistItem(wlFilmIds[k], "movie");
+      var isLast = (idx === total - 1);
+      if ((idx + 1) % 15 === 0 || isLast) {
+        var elapsed = Date.now() - phaseStart;
+        var avgPerItem = workDone > 0 ? elapsed / workDone : (estRequestsPerItem * DELAY);
+        var remainingItems = total - (idx + 1);
+        var etaMs = remainingItems * avgPerItem;
+
+        console.log("  [" + phaseLabel + "] " + (idx + 1) + "/" + total +
+          " | uplynelo: " + formatDuration(elapsed) +
+          " | pozostalo: ~" + formatDuration(etaMs) +
+          " | lacznie w CSV: " + counter);
+
+        saveCheckpoint();
       }
     }
 
-    await sleep(3000);
-
-    // ── 4. Chce zobaczyc – seriale ───────────────────────────
-    console.log("[4/4] Pobieranie watchlisty (seriale)...");
-    var wlSerialRaw = await fetchApi("logged/want2see?entityName=serial");
-    var wlTvshowRaw = await fetchApi("logged/want2see?entityName=tvshow");
-    var wlSerialAll = [];
-    if (Array.isArray(wlSerialRaw)) wlSerialAll = wlSerialAll.concat(wlSerialRaw);
-    if (Array.isArray(wlTvshowRaw)) wlSerialAll = wlSerialAll.concat(wlTvshowRaw);
-    var wlSerialIds = wlSerialAll.filter(function(e) { return Array.isArray(e) ? e[1] > 0 : true; })
-                                 .map(function(e) { return Array.isArray(e) ? e[0] : e; });
-    console.log("      Znaleziono " + wlSerialIds.length + " seriali na watchliscie");
-    for (var l = 0; l < wlSerialIds.length; l++) {
-      await pushWatchlistItem(wlSerialIds[l], "show");
-    }
-
-  } catch (err) {
-    console.error("[!] Przerwano: " + err.message);
-    console.log("[!] Zapisano czesciowe dane (" + allItems.length + " pozycji) do CSV oraz do localStorage.");
-    saveCheckpoint();
-    // eksportuj to co udalo sie zebrac, zeby nic nie przepadlo
-    exportCsv(allItems, true);
-    return;
+    console.log("      Faza zakonczona w " + formatDuration(Date.now() - phaseStart));
   }
-
-  // ── CSV (pelny eksport) ────────────────────────────────────
-  exportCsv(allItems, false);
 
   function exportCsv(items, partial) {
     if (items.length === 0) {
@@ -331,6 +342,8 @@
     a.href = url; a.download = filename; a.click();
     URL.revokeObjectURL(url);
 
+    var totalElapsed = Date.now() - scriptStartTime;
+
     console.log("");
     console.log("===============================================");
     if (partial) {
@@ -342,8 +355,76 @@
       console.log("[checkpoint] wyczyszczono - eksport zakonczony pomyslnie.");
     }
     if (errors > 0) console.warn("(" + errors + " bledow)");
+    console.log("Calkowity czas dzialania: " + formatDuration(totalElapsed));
     console.log("Plik: " + filename);
     console.log("===============================================");
   }
+
+  try {
+    // ── 0. Pobierz userId (potrzebne do komentarzy) ────────────
+    userId = await fetchUserId();
+
+    // ── 1. Ocenione filmy ────────────────────────────────────
+    console.log("[1/4] Pobieranie ocenionych filmow...");
+    var filmVotes = await fetchAllVotePages("film");
+    console.log("      Znaleziono " + filmVotes.length + " filmow, pobieram szczegoly...");
+    await runPhaseLoop(filmVotes, "filmy", 3, function(v) {
+      return enrichAndPush(parseVote(v), "movie", "watched", "");
+    });
+
+    console.log("      Pauza przed kolejnym etapem...");
+    await sleep(3000);
+
+    // ── 2. Ocenione seriale ──────────────────────────────────
+    console.log("[2/4] Pobieranie ocenionych seriali...");
+    var serialVotes = await fetchAllVotePages("serial");
+    var tvshowVotes = await fetchAllVotePages("tvshow");
+    var allSerialVotes = serialVotes.concat(tvshowVotes);
+    console.log("      Znaleziono " + allSerialVotes.length + " seriali, pobieram szczegoly...");
+    await runPhaseLoop(allSerialVotes, "seriale", 3, function(v) {
+      return enrichAndPush(parseVote(v), "show", "watched", "");
+    });
+
+    await sleep(3000);
+
+    // ── 3. Chce zobaczyc – filmy ─────────────────────────────
+    console.log("[3/4] Pobieranie watchlisty (filmy)...");
+    var wlFilmRaw = await fetchApi("logged/want2see?entityName=film");
+    var wlFilmIds = [];
+    if (Array.isArray(wlFilmRaw)) {
+      wlFilmIds = wlFilmRaw.filter(function(e) { return Array.isArray(e) ? e[1] > 0 : true; })
+                           .map(function(e) { return Array.isArray(e) ? e[0] : e; });
+    }
+    console.log("      Znaleziono " + wlFilmIds.length + " filmow na watchliscie");
+    await runPhaseLoop(wlFilmIds, "watchlist-filmy", 1, function(id) {
+      return pushWatchlistItem(id, "movie");
+    });
+
+    await sleep(3000);
+
+    // ── 4. Chce zobaczyc – seriale ───────────────────────────
+    console.log("[4/4] Pobieranie watchlisty (seriale)...");
+    var wlSerialRaw = await fetchApi("logged/want2see?entityName=serial");
+    var wlTvshowRaw = await fetchApi("logged/want2see?entityName=tvshow");
+    var wlSerialAll = [];
+    if (Array.isArray(wlSerialRaw)) wlSerialAll = wlSerialAll.concat(wlSerialRaw);
+    if (Array.isArray(wlTvshowRaw)) wlSerialAll = wlSerialAll.concat(wlTvshowRaw);
+    var wlSerialIds = wlSerialAll.filter(function(e) { return Array.isArray(e) ? e[1] > 0 : true; })
+                                 .map(function(e) { return Array.isArray(e) ? e[0] : e; });
+    console.log("      Znaleziono " + wlSerialIds.length + " seriali na watchliscie");
+    await runPhaseLoop(wlSerialIds, "watchlist-seriale", 1, function(id) {
+      return pushWatchlistItem(id, "show");
+    });
+
+  } catch (err) {
+    console.error("[!] Przerwano: " + err.message);
+    console.log("[!] Zapisano czesciowe dane (" + allItems.length + " pozycji) do CSV oraz do localStorage.");
+    saveCheckpoint();
+    exportCsv(allItems, true);
+    return;
+  }
+
+  // ── CSV (pelny eksport) ────────────────────────────────────
+  exportCsv(allItems, false);
 
 })();
