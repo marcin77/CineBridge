@@ -1,6 +1,8 @@
 /**
  * ============================================================
+
  *  CineBridge – Filmweb Browser Scraper  v2.2
+
  * ============================================================
  *
  * Jak używać:
@@ -174,6 +176,7 @@
       comment:  vote.comment || ""
     };
   }
+
 
   async function enrichAndPush(vote, type, category, listName) {
     var id = vote.id;
