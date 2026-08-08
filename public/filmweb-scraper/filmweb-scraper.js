@@ -1,8 +1,8 @@
 /**
  * ============================================================
-
+ *
  *  CineBridge – Filmweb Browser Scraper  v2.4
-
+ *
  * ============================================================
  * 
  * Jak używać:
@@ -10,7 +10,7 @@
  *  2. Otwórz DevTools → Console (F12)
  *  3. Wklej cały ten skrypt i naciśnij Enter
  *  4. Postępuj zgodnie z instrukcjami w konsoli
- 
+ *
  * UWAGA: Jeśli dostaniesz alert o wygasłej sesji:
  * - Odśwież kartę z filmweb.pl (zaloguj się ponownie, jeśli trzeba).
  * - Otwórz konsolę i wklej ten sam skrypt jeszcze raz.
