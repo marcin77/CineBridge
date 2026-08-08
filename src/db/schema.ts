@@ -17,8 +17,8 @@ export const importBatches = pgTable("import_batches", {
   id: serial("id").primaryKey(),
   source: varchar("source", { length: 32 }).notNull().default("filmweb"),
   filename: varchar("filename", { length: 255 }).notNull(),
-  category: varchar("category", { length: 32 }).notNull().default("watched"), // watched | watchlist | favorite
-  status: varchar("status", { length: 32 }).notNull().default("uploaded"), // uploaded|matching|ready|syncing|completed|failed
+  category: varchar("category", { length: 32 }).notNull().default("watched"), // watched | watchlist | favorite | list
+  status: varchar("status", { length: 32 }).notNull().default("uploaded"), // uploaded|ready|completed
   totalItems: integer("total_items").notNull().default(0),
   matchedItems: integer("matched_items").notNull().default(0),
   unmatchedItems: integer("unmatched_items").notNull().default(0),
@@ -54,17 +54,10 @@ export const mediaItems = pgTable(
 
     imdbId: varchar("imdb_id", { length: 32 }),
     tmdbId: varchar("tmdb_id", { length: 32 }),
-    traktId: integer("trakt_id"),
-    traktType: varchar("trakt_type", { length: 16 }),
     matchedTitle: text("matched_title"),
     matchedYear: integer("matched_year"),
 
-    matchStatus: varchar("match_status", { length: 24 }).notNull().default("pending"), // pending|matched|manual|unmatched|skipped
-    matchConfidence: integer("match_confidence"),
-
-    syncedToTrakt: boolean("synced_to_trakt").notNull().default(false),
-    syncedAt: timestamp("synced_at", { withTimezone: true }),
-    syncError: text("sync_error"),
+    matchStatus: varchar("match_status", { length: 24 }).notNull().default("ready"), // ready|skipped
 
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -76,7 +69,7 @@ export const mediaItems = pgTable(
 );
 
 // ---------------------------------------------------------------------------
-// Trakt account connection (single-user self-hosted app => usually one row).
+// Trakt accounts (optional, single-user self-hosted)
 // ---------------------------------------------------------------------------
 export const traktAccounts = pgTable("trakt_accounts", {
   id: serial("id").primaryKey(),
@@ -90,7 +83,7 @@ export const traktAccounts = pgTable("trakt_accounts", {
 });
 
 // ---------------------------------------------------------------------------
-// Sync log – audit trail of what happened when pushing to Trakt.
+// Sync log – optional audit trail
 // ---------------------------------------------------------------------------
 export const syncLogs = pgTable(
   "sync_logs",
@@ -102,8 +95,8 @@ export const syncLogs = pgTable(
     mediaItemId: integer("media_item_id").references(() => mediaItems.id, {
       onDelete: "cascade",
     }),
-    action: varchar("action", { length: 32 }).notNull(), // history|ratings|watchlist|list|comment
-    status: varchar("status", { length: 16 }).notNull(), // success|error
+    action: varchar("action", { length: 32 }).notNull(),
+    status: varchar("status", { length: 16 }).notNull(),
     message: text("message"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -111,22 +104,18 @@ export const syncLogs = pgTable(
 );
 
 // ---------------------------------------------------------------------------
-// Trakt id resolution cache – avoid re-querying Trakt search for the same
-// title/year pair across batches.
+// Trakt id resolution cache
 // ---------------------------------------------------------------------------
-export const traktMatchCache = pgTable(
-  "trakt_match_cache",
-  {
-    id: serial("id").primaryKey(),
-    cacheKey: varchar("cache_key", { length: 512 }).notNull().unique(),
-    type: varchar("type", { length: 16 }).notNull(),
-    imdbId: varchar("imdb_id", { length: 32 }),
-    tmdbId: varchar("tmdb_id", { length: 32 }),
-    traktId: integer("trakt_id"),
-    matchedTitle: text("matched_title"),
-    matchedYear: integer("matched_year"),
-    confidence: integer("confidence").notNull(),
-    score: real("score"),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-);
+export const traktMatchCache = pgTable("trakt_match_cache", {
+  id: serial("id").primaryKey(),
+  cacheKey: varchar("cache_key", { length: 512 }).notNull().unique(),
+  type: varchar("type", { length: 16 }).notNull(),
+  imdbId: varchar("imdb_id", { length: 32 }),
+  tmdbId: varchar("tmdb_id", { length: 32 }),
+  traktId: integer("trakt_id"),
+  matchedTitle: text("matched_title"),
+  matchedYear: integer("matched_year"),
+  confidence: integer("confidence").notNull(),
+  score: real("score"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});

@@ -8,15 +8,11 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
-    const file = formData.get("file");
-    const category = String(formData.get("category") ?? "watched");
-    const source = String(formData.get("source") ?? "filmweb");
+    const file     = formData.get("file");
+    const source   = String(formData.get("source") ?? "filmweb");
 
     if (!(file instanceof File)) {
       return Response.json({ error: "Brak pliku do zaimportowania." }, { status: 400 });
-    }
-    if (!["watched", "watchlist", "favorite"].includes(category)) {
-      return Response.json({ error: "Nieprawidłowa kategoria." }, { status: 400 });
     }
 
     const content = await file.text();
@@ -29,13 +25,20 @@ export async function POST(req: Request) {
       );
     }
 
+    // Determine overall category for the batch (use most common)
+    const catCount: Record<string, number> = {};
+    for (const item of items) {
+      catCount[item.category] = (catCount[item.category] ?? 0) + 1;
+    }
+    const batchCategory = Object.entries(catCount).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "watched";
+
     const [batch] = await db
       .insert(importBatches)
       .values({
         source,
         filename: file.name,
-        category,
-        status: "uploaded",
+        category: batchCategory,
+        status:   "uploaded",
         totalItems: items.length,
         errorItems: skipped,
       })
@@ -44,35 +47,39 @@ export async function POST(req: Request) {
     const values = items.map((item) => ({
       importBatchId: batch.id,
       source,
-      sourceId: item.sourceId,
-      category,
-      type: item.type,
-      title: item.title,
+      sourceId:      item.sourceId,
+      category:      item.category,
+      type:          item.type,
+      title:         item.title,
       originalTitle: item.originalTitle,
-      year: item.year,
-      userRating: item.userRating,
-      ratedAt: item.ratedAt,
-      watchedAt: item.watchedAt,
-      comment: item.comment,
-      imdbId: item.imdbId,
-      tmdbId: item.tmdbId,
-      matchStatus: item.imdbId ? "matched" : "pending",
-      matchConfidence: item.imdbId ? 100 : null,
+      year:          item.year,
+      userRating:    item.userRating,
+      ratedAt:       item.ratedAt,
+      watchedAt:     item.watchedAt,
+      comment:       item.comment,
+      imdbId:        item.imdbId,
+      tmdbId:        item.tmdbId,
+      listName:      item.listName,
+      matchStatus:   "ready" as const,
     }));
 
-    // insert in chunks to avoid exceeding parameter limits
+    // Insert in chunks of 500 to avoid pg parameter limit
     const chunkSize = 500;
     for (let i = 0; i < values.length; i += chunkSize) {
       await db.insert(mediaItems).values(values.slice(i, i + chunkSize));
     }
 
-    const matchedCount = values.filter((v) => v.matchStatus === "matched").length;
     await db
       .update(importBatches)
-      .set({ matchedItems: matchedCount, status: "ready", updatedAt: new Date() })
+      .set({ status: "ready", updatedAt: new Date() })
       .where(eq(importBatches.id, batch.id));
 
-    return Response.json({ batchId: batch.id, totalItems: items.length, skipped, detectedFormat });
+    return Response.json({
+      batchId: batch.id,
+      totalItems: items.length,
+      skipped,
+      detectedFormat,
+    });
   } catch (err) {
     console.error(err);
     return Response.json({ error: "Nie udało się przetworzyć pliku." }, { status: 500 });

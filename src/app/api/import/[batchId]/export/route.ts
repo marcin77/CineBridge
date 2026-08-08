@@ -1,13 +1,25 @@
 import { db } from "@/db";
 import { importBatches, mediaItems } from "@/db/schema";
 import { asc, eq } from "drizzle-orm";
-import { buildTraktCsv } from "@/lib/csv-export";
+import { buildCsv, csvFilename, type ExportFormat } from "@/lib/csv-export";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_req: Request, { params }: { params: Promise<{ batchId: string }> }) {
+const ALLOWED_FORMATS: ExportFormat[] = ["letterboxd", "trakt", "universal"];
+
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<{ batchId: string }> },
+) {
   const { batchId } = await params;
-  const id = Number(batchId);
+  const id     = Number(batchId);
+  const url    = new URL(req.url);
+  const fmt    = (url.searchParams.get("format") ?? "universal") as ExportFormat;
+
+  if (!ALLOWED_FORMATS.includes(fmt)) {
+    return Response.json({ error: "Nieznany format eksportu." }, { status: 400 });
+  }
+
   const [batch] = await db.select().from(importBatches).where(eq(importBatches.id, id));
   if (!batch) return Response.json({ error: "Nie znaleziono importu." }, { status: 404 });
 
@@ -17,12 +29,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ batchId
     .where(eq(mediaItems.importBatchId, id))
     .orderBy(asc(mediaItems.id));
 
-  const csv = buildTraktCsv(items);
+  const csv      = buildCsv(items, fmt);
+  const filename = csvFilename(batch.filename, fmt);
 
-  return new Response(csv, {
+  return new Response("\uFEFF" + csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="trakt-import-${batch.filename.replace(/\.[^.]+$/, "")}.csv"`,
+      "Content-Disposition": `attachment; filename="${filename}"`,
     },
   });
 }

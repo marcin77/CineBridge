@@ -2,38 +2,46 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-import { UploadCloud } from "lucide-react";
-
-const CATEGORIES = [
-  { value: "watched", label: "Obejrzane / Oceny" },
-  { value: "watchlist", label: "Chcę zobaczyć (watchlist)" },
-  { value: "favorite", label: "Ulubione" },
-];
+import { UploadCloud, X } from "lucide-react";
 
 export default function UploadForm() {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [category, setCategory] = useState("watched");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
+
+  function handleFile(file: File | undefined) {
+    if (!file) return;
+    setFileName(file.name);
+    setError(null);
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (fileRef.current && file) {
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      fileRef.current.files = dt.files;
+      handleFile(file);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     const file = fileRef.current?.files?.[0];
-    if (!file) {
-      setError("Wybierz plik CSV lub JSON.");
-      return;
-    }
+    if (!file) { setError("Wybierz plik CSV lub JSON."); return; }
     setLoading(true);
     try {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("category", category);
       formData.append("source", "filmweb");
 
-      const res = await fetch("/api/import/upload", { method: "POST", body: formData });
+      const res  = await fetch("/api/import/upload", { method: "POST", body: formData });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Błąd importu");
       router.push(`/import/${data.batchId}`);
@@ -47,47 +55,59 @@ export default function UploadForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-400">
-          Kategoria danych w pliku
-        </label>
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          className="w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white focus:border-emerald-400 focus:outline-none"
-        >
-          {CATEGORIES.map((c) => (
-            <option key={c.value} value={c.value}>
-              {c.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
+      {/* Drop zone */}
       <label
         htmlFor="file-upload"
-        className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border border-dashed border-white/15 bg-slate-900/60 px-4 py-10 text-center transition hover:border-emerald-400/50"
+        className={`relative flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed px-4 py-10 text-center transition ${
+          dragging
+            ? "border-emerald-400 bg-emerald-400/10"
+            : "border-white/15 bg-slate-900/60 hover:border-emerald-400/50"
+        }`}
+        onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={handleDrop}
       >
-        <UploadCloud size={28} className="text-emerald-300" />
-        <span className="text-sm text-slate-300">
-          {fileName ?? "Kliknij, aby wybrać plik CSV lub JSON z Filmweb"}
-        </span>
-        <span className="text-xs text-slate-500">Obsługiwane: filmweb-export, Filmweb2Letterboxd, format uniwersalny</span>
+        <UploadCloud size={32} className="text-emerald-300" />
+        {fileName ? (
+          <div className="flex items-center gap-2 text-sm font-medium text-white">
+            {fileName}
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); setFileName(null); if (fileRef.current) fileRef.current.value = ""; }}
+              className="text-slate-500 hover:text-slate-300"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        ) : (
+          <>
+            <span className="text-sm text-slate-300">
+              Przeciągnij plik lub kliknij, aby wybrać
+            </span>
+            <span className="text-xs text-slate-500">
+              Obsługiwane: filmweb-export, Filmweb2Letterboxd, CineBridge CSV
+            </span>
+          </>
+        )}
         <input
           id="file-upload"
           ref={fileRef}
           type="file"
           accept=".csv,.json,text/csv,application/json"
           className="hidden"
-          onChange={(e) => setFileName(e.target.files?.[0]?.name ?? null)}
+          onChange={(e) => handleFile(e.target.files?.[0])}
         />
       </label>
 
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && (
+        <p className="rounded-lg border border-red-400/30 bg-red-400/10 px-3 py-2 text-sm text-red-300">
+          {error}
+        </p>
+      )}
 
       <button
         type="submit"
-        disabled={loading}
+        disabled={loading || !fileName}
         className="w-full rounded-lg bg-emerald-400 px-4 py-2.5 font-medium text-slate-950 transition hover:bg-emerald-300 disabled:opacity-50"
       >
         {loading ? "Importowanie…" : "Importuj plik"}
