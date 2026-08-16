@@ -1,66 +1,69 @@
 import {
-  pgTable,
-  serial,
-  text,
-  varchar,
+  sqliteTable,
   integer,
+  text,
   real,
-  boolean,
-  timestamp,
   index,
-} from "drizzle-orm/pg-core";
+} from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
 
 // ---------------------------------------------------------------------------
-// Import batches – one row per uploaded Filmweb (or future source) export.
+// Import batches
 // ---------------------------------------------------------------------------
-export const importBatches = pgTable("import_batches", {
-  id: serial("id").primaryKey(),
-  source: varchar("source", { length: 32 }).notNull().default("filmweb"),
-  filename: varchar("filename", { length: 255 }).notNull(),
-  category: varchar("category", { length: 32 }).notNull().default("watched"), // watched | watchlist | favorite | list
-  status: varchar("status", { length: 32 }).notNull().default("uploaded"), // uploaded|ready|completed
+export const importBatches = sqliteTable("import_batches", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  source: text("source").notNull().default("filmweb"),
+  filename: text("filename").notNull(),
+  category: text("category").notNull().default("watched"),
+  status: text("status").notNull().default("uploaded"),
   totalItems: integer("total_items").notNull().default(0),
   matchedItems: integer("matched_items").notNull().default(0),
   unmatchedItems: integer("unmatched_items").notNull().default(0),
   syncedItems: integer("synced_items").notNull().default(0),
   errorItems: integer("error_items").notNull().default(0),
   errorMessage: text("error_message"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
 });
 
 // ---------------------------------------------------------------------------
-// Individual media items belonging to an import batch.
+// Media items
 // ---------------------------------------------------------------------------
-export const mediaItems = pgTable(
+export const mediaItems = sqliteTable(
   "media_items",
   {
-    id: serial("id").primaryKey(),
+    id: integer("id").primaryKey({ autoIncrement: true }),
     importBatchId: integer("import_batch_id")
       .notNull()
       .references(() => importBatches.id, { onDelete: "cascade" }),
-    source: varchar("source", { length: 32 }).notNull().default("filmweb"),
-    sourceId: varchar("source_id", { length: 64 }),
-    category: varchar("category", { length: 32 }).notNull().default("watched"),
-    type: varchar("type", { length: 16 }).notNull().default("movie"), // movie | show
+    source: text("source").notNull().default("filmweb"),
+    sourceId: text("source_id"),
+    category: text("category").notNull().default("watched"),
+    type: text("type").notNull().default("movie"),
     title: text("title").notNull(),
     originalTitle: text("original_title"),
     year: integer("year"),
     userRating: integer("user_rating"),
-    ratedAt: timestamp("rated_at", { withTimezone: true }),
-    watchedAt: timestamp("watched_at", { withTimezone: true }),
+    ratedAt: text("rated_at"),
+    watchedAt: text("watched_at"),
     comment: text("comment"),
-    listName: varchar("list_name", { length: 255 }),
+    listName: text("list_name"),
 
-    imdbId: varchar("imdb_id", { length: 32 }),
-    tmdbId: varchar("tmdb_id", { length: 32 }),
+    imdbId: text("imdb_id"),
+    tmdbId: text("tmdb_id"),
     matchedTitle: text("matched_title"),
     matchedYear: integer("matched_year"),
+    matchConfidence: integer("match_confidence"),
+    matchStatus: text("match_status").notNull().default("ready"),
 
-    matchStatus: varchar("match_status", { length: 24 }).notNull().default("ready"), // ready|skipped
+    traktId: integer("trakt_id"),
+    traktType: text("trakt_type"),
+    syncedToTrakt: integer("synced_to_trakt", { mode: "boolean" }).notNull().default(false),
+    syncError: text("sync_error"),
+    syncedAt: text("synced_at"),
 
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
   },
   (table) => [
     index("media_items_batch_idx").on(table.importBatchId),
@@ -69,53 +72,53 @@ export const mediaItems = pgTable(
 );
 
 // ---------------------------------------------------------------------------
-// Trakt accounts (optional, single-user self-hosted)
+// Trakt accounts
 // ---------------------------------------------------------------------------
-export const traktAccounts = pgTable("trakt_accounts", {
-  id: serial("id").primaryKey(),
-  traktUsername: varchar("trakt_username", { length: 255 }),
+export const traktAccounts = sqliteTable("trakt_accounts", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  traktUsername: text("trakt_username"),
   accessToken: text("access_token").notNull(),
   refreshToken: text("refresh_token").notNull(),
-  scope: varchar("scope", { length: 64 }),
-  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-  connectedAt: timestamp("connected_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  scope: text("scope"),
+  expiresAt: text("expires_at").notNull(),
+  connectedAt: text("connected_at").notNull().default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
 });
 
 // ---------------------------------------------------------------------------
-// Sync log – optional audit trail
+// Sync logs
 // ---------------------------------------------------------------------------
-export const syncLogs = pgTable(
+export const syncLogs = sqliteTable(
   "sync_logs",
   {
-    id: serial("id").primaryKey(),
+    id: integer("id").primaryKey({ autoIncrement: true }),
     importBatchId: integer("import_batch_id").references(() => importBatches.id, {
       onDelete: "cascade",
     }),
     mediaItemId: integer("media_item_id").references(() => mediaItems.id, {
       onDelete: "cascade",
     }),
-    action: varchar("action", { length: 32 }).notNull(),
-    status: varchar("status", { length: 16 }).notNull(),
+    action: text("action").notNull(),
+    status: text("status").notNull(),
     message: text("message"),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
   },
   (table) => [index("sync_logs_batch_idx").on(table.importBatchId)],
 );
 
 // ---------------------------------------------------------------------------
-// Trakt id resolution cache
+// Trakt match cache
 // ---------------------------------------------------------------------------
-export const traktMatchCache = pgTable("trakt_match_cache", {
-  id: serial("id").primaryKey(),
-  cacheKey: varchar("cache_key", { length: 512 }).notNull().unique(),
-  type: varchar("type", { length: 16 }).notNull(),
-  imdbId: varchar("imdb_id", { length: 32 }),
-  tmdbId: varchar("tmdb_id", { length: 32 }),
+export const traktMatchCache = sqliteTable("trakt_match_cache", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  cacheKey: text("cache_key").notNull().unique(),
+  type: text("type").notNull(),
+  imdbId: text("imdb_id"),
+  tmdbId: text("tmdb_id"),
   traktId: integer("trakt_id"),
   matchedTitle: text("matched_title"),
   matchedYear: integer("matched_year"),
   confidence: integer("confidence").notNull(),
   score: real("score"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
 });

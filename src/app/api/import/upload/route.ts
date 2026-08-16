@@ -47,19 +47,19 @@ export async function POST(req: Request) {
     const values = items.map((item) => ({
       importBatchId: batch.id,
       source,
-      sourceId:      item.sourceId,
+      sourceId:      item.sourceId ?? null,
       category:      item.category,
       type:          item.type,
       title:         item.title,
-      originalTitle: item.originalTitle,
-      year:          item.year,
-      userRating:    item.userRating,
-      ratedAt:       item.ratedAt,
-      watchedAt:     item.watchedAt,
-      comment:       item.comment,
-      imdbId:        item.imdbId,
-      tmdbId:        item.tmdbId,
-      listName:      item.listName,
+      originalTitle: item.originalTitle ?? null,
+      year:          item.year ?? null,
+      userRating:    item.userRating ?? null,
+      ratedAt:       item.ratedAt ?? null,
+      watchedAt:     item.watchedAt ?? null,
+      comment:       item.comment ?? null,
+      imdbId:        item.imdbId ?? null,
+      tmdbId:        item.tmdbId ?? null,
+      listName:      item.listName ?? null,
       matchStatus:   "ready" as const,
     }));
 
@@ -71,7 +71,7 @@ export async function POST(req: Request) {
 
     await db
       .update(importBatches)
-      .set({ status: "ready", updatedAt: new Date() })
+      .set({ status: "ready", updatedAt: new Date().toISOString() })
       .where(eq(importBatches.id, batch.id));
 
     return Response.json({

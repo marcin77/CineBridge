@@ -6,8 +6,8 @@ export interface ParsedItem {
   year: number | null;
   type: "movie" | "show";
   userRating: number | null;
-  ratedAt: Date | null;
-  watchedAt: Date | null;
+  ratedAt: string | null;   // było: Date | null
+  watchedAt: string | null; // było: Date | null
   comment: string | null;
   sourceId: string | null;
   imdbId: string | null;
@@ -56,17 +56,17 @@ function pickValue(row: Record<string, string>, keys: string[]): string | null {
   return null;
 }
 
-function parseDate(raw: string | null): Date | null {
+function parseDate(raw: string | null): string | null {
   if (!raw) return null;
-  // Unix timestamp (ms or s)
+  // Unix timestamp (ms lub s)
   if (/^\d{10,13}$/.test(raw)) {
     const num = Number(raw);
     const ms = raw.length === 13 ? num : num * 1000;
     const d = new Date(ms);
-    return Number.isNaN(d.getTime()) ? null : d;
+    return Number.isNaN(d.getTime()) ? null : d.toISOString();
   }
   const d = new Date(raw);
-  return Number.isNaN(d.getTime()) ? null : d;
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
 function parseRating(raw: string | null): number | null {

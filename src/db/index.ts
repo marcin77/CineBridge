@@ -1,24 +1,14 @@
-import { drizzle } from "drizzle-orm/node-postgres";
-import { Pool } from "pg";
+import { drizzle } from "drizzle-orm/better-sqlite3";
+import Database from "better-sqlite3";
+import * as schema from "./schema";
+import path from "path";
 
-const databaseUrl = process.env.DATABASE_URL;
+const dbPath = process.env.DATABASE_PATH ?? path.join(process.cwd(), "data", "cinebridge.db");
 
-if (!databaseUrl) {
-  throw new Error("DATABASE_URL is required");
-}
+const sqlite = new Database(dbPath);
 
-const globalForDb = globalThis as typeof globalThis & {
-  __arenaNextJsPostgresqlPool?: Pool;
-};
+// Włącz WAL mode dla lepszej wydajności
+sqlite.pragma("journal_mode = WAL");
+sqlite.pragma("foreign_keys = ON");
 
-export const pool =
-  globalForDb.__arenaNextJsPostgresqlPool ??
-  new Pool({
-    connectionString: databaseUrl,
-  });
-
-if (process.env.NODE_ENV !== "production") {
-  globalForDb.__arenaNextJsPostgresqlPool = pool;
-}
-
-export const db = drizzle(pool);
+export const db = drizzle(sqlite, { schema });
