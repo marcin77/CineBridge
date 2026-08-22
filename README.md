@@ -70,6 +70,7 @@ Oprócz wbudowanego scrapera, CineBridge obsługuje:
 
 ## 📸 Screenshot
 
+| ![Data](screenshots/start.png) | ![Results](screenshots/import.png) | ![Predict](screenshots/export.png) |
 ---
 
 ## 🛠️ Stack technologiczny
