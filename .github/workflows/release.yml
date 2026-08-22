@@ -12,28 +12,21 @@ jobs:
   build-linux:
     name: 🐧 Build AppImage
     runs-on: ubuntu-latest
-    
     steps:
       - uses: actions/checkout@v4
-      
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
-      
       - name: Install Linux system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential python3 libfuse2
-      
-      - name: Install dependencies
-        run: npm ci
-      
+      - run: npm ci
       - name: Build AppImage
         run: npm run build:linux
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
       - uses: actions/upload-artifact@v4
         with:
           name: linux-build
@@ -42,23 +35,25 @@ jobs:
   build-windows:
     name: 🪟 Build Windows Installer
     runs-on: windows-latest
-    
     steps:
       - uses: actions/checkout@v4
-      
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
-      
+      - name: Configure node-gyp to use Visual Studio 2022
+        run: |
+          npm config set msvs_version 2022
+          npm config set python python3
       - name: Install dependencies
         run: npm ci
-      
+        env:
+          npm_config_msvs_version: '2022'
       - name: Build Windows Installer
         run: npm run build:win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
+          npm_config_msvs_version: '2022'
       - uses: actions/upload-artifact@v4
         with:
           name: windows-build
@@ -68,44 +63,30 @@ jobs:
     name: 📦 Create GitHub Release
     needs: [ build-linux, build-windows ]
     runs-on: ubuntu-latest
-    
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/download-artifact@v4
         with:
           name: linux-build
           path: release/
-
       - uses: actions/download-artifact@v4
         with:
           name: windows-build
           path: release/
-
       - id: version
         run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-
       - uses: softprops/action-gh-release@v2
         with:
           name: CineBridge ${{ steps.version.outputs.tag }}
           body: |
             ## 🎬 CineBridge ${{ steps.version.outputs.tag }}
-            
-            ### ⬇️ Pobieranie
-            
+
             | System | Plik | Instalacja |
             |--------|------|------------|
             | 🐧 Linux | `CineBridge-*-x86_64.AppImage` | `chmod +x *.AppImage && ./CineBridge-*.AppImage` |
             | 🪟 Windows | `CineBridge-Setup-*.exe` | Uruchom instalator |
-            
-            ### ✨ Nowości w tej wersji
-            
-            Sprawdź pełny changelog poniżej.
-            
-            ---
-            
-            **Baza danych:** SQLite (wbudowana, nic nie trzeba instalować)  
-            **Scraper:** Filmweb + eksport do Letterboxd, Trakt, Simkl
+
+            **Baza danych:** SQLite (wbudowana, nic nie trzeba instalować)
           files: release/*
           generate_release_notes: true
           prerelease: ${{ contains(github.ref, '-beta') || contains(github.ref, '-alpha') || contains(github.ref, '-rc') }}
