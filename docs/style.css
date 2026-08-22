@@ -383,3 +383,38 @@ body {
   .nav-links a:not(.nav-github) { display: none; }
   .hero { padding: 80px 0 60px; }
 }
+
+/* ── PLATFORM ICONS ── */
+.platform-icon {
+  vertical-align: middle;
+  margin-right: 6px;
+  display: inline-block;
+}
+
+.platforms span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.download-icon svg {
+  color: var(--accent-light);
+  filter: drop-shadow(0 0 12px var(--accent-glow));
+}
+
+.download-icon {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+/* ── PLATFORM ICONS ── */
+.download-icon {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.download-icon img {
+  filter: drop-shadow(0 0 12px var(--accent-glow));
+}
