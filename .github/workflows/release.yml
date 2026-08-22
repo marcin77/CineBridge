@@ -12,55 +12,63 @@ jobs:
   build-linux:
     name: 🐧 Build AppImage
     runs-on: ubuntu-latest
+    
     steps:
       - uses: actions/checkout@v4
+      
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
-      - name: Install Linux system deps
+      
+      - name: Install Linux system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential python3 \
-            libgtk-3-dev libwebkit2gtk-4.0-dev \
-            libappindicator3-dev librsvg2-dev libfuse2
-      - run: npm ci
-      - run: npm run db:generate
-      - run: npm run build
-      - run: npm run rebuild:electron
-      - run: npm run pack:linux
+          sudo apt-get install -y build-essential python3 libfuse2
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build AppImage
+        run: npm run build:linux
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
       - uses: actions/upload-artifact@v4
         with:
           name: linux-build
           path: dist/*.AppImage
 
   build-windows:
-    name: 🪟 Build EXE
+    name: 🪟 Build Windows Installer
     runs-on: windows-latest
+    
     steps:
       - uses: actions/checkout@v4
+      
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
-      - run: npm ci
-      - run: npm run db:generate
-      - run: npm run build
-      - run: npm run rebuild:electron
-      - run: npm run pack:win
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build Windows Installer
+        run: npm run build:win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
       - uses: actions/upload-artifact@v4
         with:
           name: windows-build
           path: dist/*.exe
 
   release:
-    name: 📦 Create Release
+    name: 📦 Create GitHub Release
     needs: [ build-linux, build-windows ]
     runs-on: ubuntu-latest
+    
     steps:
       - uses: actions/checkout@v4
 
@@ -82,20 +90,24 @@ jobs:
           name: CineBridge ${{ steps.version.outputs.tag }}
           body: |
             ## 🎬 CineBridge ${{ steps.version.outputs.tag }}
-
-            Aplikacja zawiera wbudowaną bazę SQLite - nic nie trzeba instalować.
-
-            | System | Plik |
-            |--------|------|
-            | 🐧 Linux | `.AppImage` |
-            | 🪟 Windows | `-Setup.exe` |
-
-            ### Linux
-            ```bash
-            chmod +x CineBridge-*.AppImage
-            ./CineBridge-*.AppImage
-            ```
-            ### Windows
-            Uruchom `CineBridge-Setup-*.exe`
+            
+            ### ⬇️ Pobieranie
+            
+            | System | Plik | Instalacja |
+            |--------|------|------------|
+            | 🐧 Linux | `CineBridge-*-x86_64.AppImage` | `chmod +x *.AppImage && ./CineBridge-*.AppImage` |
+            | 🪟 Windows | `CineBridge-Setup-*.exe` | Uruchom instalator |
+            
+            ### ✨ Nowości w tej wersji
+            
+            Sprawdź pełny changelog poniżej.
+            
+            ---
+            
+            **Baza danych:** SQLite (wbudowana, nic nie trzeba instalować)  
+            **Scraper:** Filmweb + eksport do Letterboxd, Trakt, Simkl
           files: release/*
-          prerelease: ${{ contains(github.ref, '-beta') || contains(github.ref, '-alpha') }}
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref, '-beta') || contains(github.ref, '-alpha') || contains(github.ref, '-rc') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

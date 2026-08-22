@@ -2,9 +2,9 @@ name: Build CineBridge
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, master, develop, development ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, master ]
 
 jobs:
   build-linux:
@@ -16,36 +16,22 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
-      - name: Install Linux system dependencies (dla better-sqlite3 + Electron)
+      - name: Install Linux system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             build-essential \
             python3 \
-            libgtk-3-dev \
-            libwebkit2gtk-4.0-dev \
-            libappindicator3-dev \
-            librsvg2-dev \
-            libfuse2 \
-            fuse
+            libfuse2
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Generate Drizzle migrations
-        run: npm run db:generate
-
-      - name: Build Next.js
-        run: npm run build
-
-      - name: Rebuild better-sqlite3 for Electron
-        run: npm run rebuild:electron
-
-      - name: Package AppImage
-        run: npm run pack:linux
+      - name: Build AppImage (kompletny proces)
+        run: npm run build:linux
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -57,7 +43,7 @@ jobs:
           retention-days: 7
 
   build-windows:
-    name: 🪟 Build Windows EXE
+    name: 🪟 Build Windows Installer
     runs-on: windows-latest
 
     steps:
@@ -65,27 +51,18 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Generate Drizzle migrations
-        run: npm run db:generate
-
-      - name: Build Next.js
-        run: npm run build
-
-      - name: Rebuild better-sqlite3 for Electron
-        run: npm run rebuild:electron
-
-      - name: Package EXE
-        run: npm run pack:win
+      - name: Build Windows Installer (kompletny proces)
+        run: npm run build:win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload EXE
+      - name: Upload Installer
         uses: actions/upload-artifact@v4
         with:
           name: CineBridge-windows
