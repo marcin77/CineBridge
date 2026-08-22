@@ -3,6 +3,10 @@
 
 **Migruj swoją historię filmową z Filmweb.pl do Letterboxd, Trakt, Simkl i innych serwisów — w pełni automatycznie.**
 
+[![GitHub release](https://img.shields.io/github/v/release/marcin77/CineBridge)](https://github.com/marcin77/CineBridge/releases)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey)](https://github.com/marcin77/CineBridge/releases)
+
 CineBridge to aplikacja desktopowa z wbudowanym scraperem Filmweb, który pobiera Twoje oceny, komentarze, watchlistę i listy, a następnie eksportuje je do formatów kompatybilnych z popularnymi serwisami filmowymi.
 
 ---
