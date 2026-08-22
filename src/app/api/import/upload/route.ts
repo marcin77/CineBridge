@@ -53,6 +53,7 @@ export async function POST(req: Request) {
       title:         item.title,
       originalTitle: item.originalTitle ?? null,
       year:          item.year ?? null,
+      director:      item.director ?? null,
       userRating:    item.userRating ?? null,
       ratedAt:       item.ratedAt ?? null,
       watchedAt:     item.watchedAt ?? null,
@@ -60,6 +61,9 @@ export async function POST(req: Request) {
       imdbId:        item.imdbId ?? null,
       tmdbId:        item.tmdbId ?? null,
       listName:      item.listName ?? null,
+      listId:        item.listId ?? null,      // DODANE
+      listStatus:    item.listStatus ?? null,  // DODANE
+      favorite:      item.favorite ?? null,    // DODANE
       matchStatus:   "ready" as const,
     }));
 

@@ -4,6 +4,7 @@ import { importBatches } from "@/db/schema";
 import { desc } from "drizzle-orm";
 import UploadForm from "@/components/UploadForm";
 import { ArrowRight, ExternalLink, FileText, Trash2 } from "lucide-react";
+import DeleteBatchButton from "@/components/DeleteBatchButton";
 
 export const dynamic = "force-dynamic";
 
@@ -40,19 +41,20 @@ export default async function ImportPage() {
         <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
           <h2 className="mb-4 text-lg font-semibold text-white">1. Skąd wziąć plik?</h2>
           <ul className="space-y-3 text-sm text-slate-300">
-            <li className="rounded-xl border border-emerald-400/20 bg-emerald-400/5 p-4">
-              <div className="mb-1 flex items-center justify-between font-medium text-white">
-                CineBridge Scraper
-                <Link
-                  href="/scraper"
-                  className="flex items-center gap-1 text-xs text-emerald-300 hover:underline"
-                >
-                  Instrukcja <ArrowRight size={12} />
-                </Link>
-              </div>
-              <span className="text-xs text-emerald-400/80">Zalecane</span> — Wbudowany skrypt JS
-              uruchamiany w przeglądarce. Zbiera oceny, komentarze, watchlist i ulubione.
-            </li>
+          <li className="rounded-xl border border-emerald-400/20 bg-emerald-400/5 p-4">
+            <div className="mb-1 flex items-center justify-between font-medium text-white">
+              CineBridge Scraper
+              <Link
+                href="/scraper"
+                className="flex items-center gap-1 text-xs text-emerald-300 hover:underline"
+              >
+                Uruchom <ArrowRight size={12} />
+              </Link>
+            </div>
+            <span className="text-xs text-emerald-400/80">Zalecane</span> — Natywny scraper
+            w aplikacji desktopowej. Automatycznie loguje, pobiera oceny, komentarze,
+            watchlist, ulubione i listy. Wymaga wersji desktop CineBridge.
+          </li>
             <li className="rounded-xl border border-white/10 bg-slate-900/60 p-4">
               <div className="mb-1 flex items-center justify-between font-medium text-white">
                 filmweb-export (Python)
@@ -131,16 +133,16 @@ export default async function ImportPage() {
                       {new Date(b.createdAt).toLocaleString("pl-PL")}
                     </td>
                     <td className="py-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <form action={`/api/import/${b.id}`} method="DELETE" className="hidden" />
-                        <Link
-                          href={`/import/${b.id}`}
-                          className="inline-flex items-center gap-1 text-emerald-300 hover:underline text-xs"
-                        >
-                          Otwórz <ArrowRight size={12} />
-                        </Link>
-                      </div>
-                    </td>
+                      <div className="flex items-center justify-end gap-3">
+                          <Link
+                            href={`/import/${b.id}`}
+                            className="inline-flex items-center gap-1 text-emerald-300 hover:underline text-xs"
+                          >
+                            Otwórz <ArrowRight size={12} />
+                          </Link>
+                          <DeleteBatchButton batchId={b.id} filename={b.filename} />
+                        </div>
+                      </td>
                   </tr>
                 ))}
               </tbody>

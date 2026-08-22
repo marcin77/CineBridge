@@ -23,7 +23,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ batchI
 
   await db
     .update(importBatches)
-    .set({ status: "matching", updatedAt: new Date() })
+    .set({ status: "matching", updatedAt: new Date().toISOString() })
     .where(eq(importBatches.id, id));
 
   const pendingItems = await db
@@ -93,7 +93,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ batchI
         traktType: outcome.result?.type ?? null,
         matchedTitle: outcome.result?.title ?? null,
         matchedYear: outcome.result?.year ?? null,
-        updatedAt: new Date(),
+        updatedAt: new Date().toISOString(),
       })
       .where(eq(mediaItems.id, item.id));
   }
@@ -118,7 +118,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ batchI
       status: remaining === 0 ? "ready" : "matching",
       matchedItems: matched,
       unmatchedItems: unmatched,
-      updatedAt: new Date(),
+      updatedAt: new Date().toISOString(),
     })
     .where(eq(importBatches.id, id));
 

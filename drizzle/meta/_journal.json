@@ -1,19 +1,33 @@
 {
   "version": "7",
-  "dialect": "postgresql",
+  "dialect": "sqlite",
   "entries": [
     {
       "idx": 0,
-      "version": "7",
-      "when": 1786232572129,
-      "tag": "0000_happy_shatterstar",
+      "version": "6",
+      "when": 1786897702723,
+      "tag": "0000_supreme_captain_universe",
       "breakpoints": true
     },
     {
       "idx": 1,
-      "version": "7",
-      "when": 1786232672352,
-      "tag": "0001_tan_rafael_vega",
+      "version": "6",
+      "when": 1786917661324,
+      "tag": "0001_oval_impossible_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1786963747819,
+      "tag": "0002_powerful_terror",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1787071016498,
+      "tag": "0003_easy_doctor_doom",
       "breakpoints": true
     }
   ]

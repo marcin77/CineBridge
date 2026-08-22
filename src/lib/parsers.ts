@@ -4,15 +4,19 @@ export interface ParsedItem {
   title: string;
   originalTitle: string | null;
   year: number | null;
+  director: string | null; // <- DODANE
   type: "movie" | "show";
   userRating: number | null;
-  ratedAt: string | null;   // było: Date | null
-  watchedAt: string | null; // było: Date | null
+  ratedAt: string | null;
+  watchedAt: string | null;
   comment: string | null;
   sourceId: string | null;
   imdbId: string | null;
   tmdbId: string | null;
   listName: string | null;
+  listId: string | null;
+  listStatus: string | null;
+  favorite: string | null;
   category: string;
 }
 
@@ -27,6 +31,7 @@ const ALIASES: Record<string, string[]> = {
   title:         ["title", "pl_title", "tytul", "tytuł", "nazwa", "film", "serial"],
   originalTitle: ["original_title", "originaltitle", "oryginalny_tytul", "oryginalnytytul"],
   year:          ["year", "rok", "premiere_year"],
+  director:      ["director", "directors", "rezyser", "režyser", "reżyser"], // <- DODANE
   rating:        ["user_rating", "rating10", "rating", "ocena", "vote", "vote10"],
   date:          ["date", "watcheddate", "watched_at", "rated_at", "data", "iso_date", "timestamp", "ratedate", "viewdate"],
   comment:       ["comment", "review", "recenzja", "komentarz", "notatka"],
@@ -36,6 +41,9 @@ const ALIASES: Record<string, string[]> = {
   type:          ["type", "kind", "typ"],
   listName:      ["list_name", "lista", "list", "listname"],
   category:      ["category", "kategoria"],
+  listId:        ["list_id", "listid"],
+  listStatus:    ["list_status", "liststatus"],
+  favorite:      ["favorite", "favourite", "ulubione", "fav"],
 };
 
 function normalizeHeader(h: string) {
@@ -87,6 +95,7 @@ function parseCategory(raw: string | null, listName: string | null): string {
   const v = raw.toLowerCase();
   if (v.includes("watchlist") || v.includes("chcę") || v.includes("want")) return "watchlist";
   if (v.includes("favorit") || v.includes("ulubion")) return "favorite";
+  if (v === "list") return "list";
   return "watched";
 }
 
@@ -101,6 +110,7 @@ function rowsToItems(rows: Record<string, string>[]): { items: ParsedItem[]; ski
     const originalTitle = pickValue(row, ALIASES.originalTitle);
     const yearRaw       = pickValue(row, ALIASES.year);
     const year          = yearRaw ? Number.parseInt(yearRaw, 10) : null;
+    const director      = pickValue(row, ALIASES.director); // <- DODANE
     const rating        = parseRating(pickValue(row, ALIASES.rating));
     const dateRaw       = pickValue(row, ALIASES.date);
     const date          = parseDate(dateRaw);
@@ -111,6 +121,12 @@ function rowsToItems(rows: Record<string, string>[]): { items: ParsedItem[]; ski
     const typeRaw       = pickValue(row, ALIASES.type);
     const listName      = pickValue(row, ALIASES.listName);
     const categoryRaw   = pickValue(row, ALIASES.category);
+    const listId        = pickValue(row, ALIASES.listId);
+    const listStatus    = pickValue(row, ALIASES.listStatus);
+    const favoriteRaw   = pickValue(row, ALIASES.favorite);
+
+    // Konwersja "tak"/"nie" na boolean w kategoriach
+    const isFavorite = favoriteRaw && /tak|yes|true|1/i.test(favoriteRaw);
 
     const type: "movie" | "show" =
       typeRaw && /serial|show|series/i.test(typeRaw) ? "show" : "movie";
@@ -121,6 +137,7 @@ function rowsToItems(rows: Record<string, string>[]): { items: ParsedItem[]; ski
       title,
       originalTitle: originalTitle ?? null,
       year: year && !Number.isNaN(year) ? year : null,
+      director: director ?? null, // <- DODANE
       type,
       userRating: rating,
       ratedAt:  rating ? date : null,
@@ -131,6 +148,9 @@ function rowsToItems(rows: Record<string, string>[]): { items: ParsedItem[]; ski
       tmdbId:   tmdbId ?? null,
       listName: listName ?? null,
       category,
+      listId: listId ?? null,
+      listStatus: listStatus ?? null,
+      favorite: favoriteRaw ?? null,
     });
   }
   return { items, skipped };

@@ -25,11 +25,11 @@ export default async function ExportPage() {
       </p>
 
       {/* Format description */}
-      <section className="mb-8 grid gap-4 sm:grid-cols-3">
+      <section className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
           {
             name: "Letterboxd",
-            desc: "Plik CSV gotowy do importu na letterboxd.com. Obsługuje oceny (0.5–5★), daty i recenzje.",
+            desc: "Plik CSV gotowy do importu na letterboxd.com. Obsługuje tylko filmy (seriale są pomijane). Oceny 0.5–5★, daty i recenzje.",
             format: "letterboxd",
             color: "from-orange-400 to-amber-500",
             url: "https://letterboxd.com/import/",
@@ -41,6 +41,13 @@ export default async function ExportPage() {
             color: "from-red-400 to-pink-500",
             url: "https://trakt.tv/settings",
           },
+          {
+          name: "Simkl",
+          desc: "Format CSV dla simkl.com. Obsługuje oceny (1-10), status watchlisty i daty obejrzenia.",
+          format: "simkl",
+          color: "from-blue-400 to-indigo-500",
+          url: "https://simkl.com/apps/import/csv/",
+        },
           {
             name: "Universalny",
             desc: "Pełny eksport ze wszystkimi polami. Idealne do archiwizacji lub własnych skryptów.",
@@ -102,14 +109,24 @@ export default async function ExportPage() {
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    {(["letterboxd", "universal", "trakt"] as const).map((fmt) => (
+                    {(["letterboxd", "universal", "trakt", "simkl"] as const).map((fmt) => (
                       <a
                         key={fmt}
-                        href={`/api/import/${b.id}/export?format=${fmt}`}
+                        href={
+                          fmt === "letterboxd"
+                            ? `/api/import/${b.id}/export/letterboxd-zip`
+                            : `/api/import/${b.id}/export?format=${fmt}`
+                        }
                         className="flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-xs text-slate-300 transition hover:bg-white/5 hover:text-white"
                       >
                         <Download size={12} />
-                        {fmt === "letterboxd" ? "Letterboxd" : fmt === "trakt" ? "Trakt" : "Universal"}
+                        {fmt === "letterboxd"
+                          ? "Letterboxd ZIP"
+                          : fmt === "trakt"
+                            ? "Trakt"
+                            : fmt === "simkl"
+                              ? "Simkl"
+                              : "Universal"}
                       </a>
                     ))}
                     <Link
@@ -135,12 +152,16 @@ export default async function ExportPage() {
             Obsługuje do 20 000 pozycji.
           </li>
           <li>
-            <strong className="text-slate-300">Trakt:</strong> Od 2024r. Trakt ograniczył API do 1 aplikacji na konto.
+            <strong className="text-slate-300">Trakt:</strong> Od 2026r. Trakt ograniczył API do 1 aplikacji na konto.
             Możesz importować ręcznie przez trakt.tv → Ustawienia → Importuj dane.
           </li>
           <li>
             <strong className="text-slate-300">Komentarze:</strong> CineBridge eksportuje komentarze jako pole „Review" (Letterboxd)
             lub „comment" (Trakt/Universal). Letterboxd wyświetla je jako recenzje.
+          </li>
+          <li>
+          <strong className="text-slate-300">Simkl:</strong> Wejdź na simkl.com/apps/import/csv/ → wybierz plik →
+          wybierz gdzie dodać dane (Watchlist/Historia) → Upload and start import.
           </li>
         </ul>
       </section>

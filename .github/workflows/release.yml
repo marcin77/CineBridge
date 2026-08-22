@@ -1,0 +1,101 @@
+name: Release CineBridge
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-linux:
+    name: 🐧 Build AppImage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install Linux system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential python3 \
+            libgtk-3-dev libwebkit2gtk-4.0-dev \
+            libappindicator3-dev librsvg2-dev libfuse2
+      - run: npm ci
+      - run: npm run db:generate
+      - run: npm run build
+      - run: npm run rebuild:electron
+      - run: npm run pack:linux
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-build
+          path: dist/*.AppImage
+
+  build-windows:
+    name: 🪟 Build EXE
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run db:generate
+      - run: npm run build
+      - run: npm run rebuild:electron
+      - run: npm run pack:win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: dist/*.exe
+
+  release:
+    name: 📦 Create Release
+    needs: [ build-linux, build-windows ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-build
+          path: release/
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-build
+          path: release/
+
+      - id: version
+        run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: CineBridge ${{ steps.version.outputs.tag }}
+          body: |
+            ## 🎬 CineBridge ${{ steps.version.outputs.tag }}
+
+            Aplikacja zawiera wbudowaną bazę SQLite - nic nie trzeba instalować.
+
+            | System | Plik |
+            |--------|------|
+            | 🐧 Linux | `.AppImage` |
+            | 🪟 Windows | `-Setup.exe` |
+
+            ### Linux
+            ```bash
+            chmod +x CineBridge-*.AppImage
+            ./CineBridge-*.AppImage
+            ```
+            ### Windows
+            Uruchom `CineBridge-Setup-*.exe`
+          files: release/*
+          prerelease: ${{ contains(github.ref, '-beta') || contains(github.ref, '-alpha') }}

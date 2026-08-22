@@ -40,19 +40,43 @@ export default function ScraperClient({ scriptContent }: Props) {
     URL.revokeObjectURL(url);
   }
 
-  return (
-    <div className="mx-auto max-w-4xl px-6 py-10">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-sky-400/10 px-3 py-1 text-xs font-medium text-sky-300">
-          <Code2 size={13} /> Wbudowany scraper
-        </div>
-        <h1 className="text-2xl font-semibold text-white">Scraper Filmweb</h1>
-        <p className="mt-2 text-slate-400">
-          Uruchamiany bezpośrednio w przeglądarce — nie wymaga instalacji, nie potrzebuje dostępu
-          do serwera. Wszystko dzieje się lokalnie na Twoim koncie Filmweb.
-        </p>
+return (
+  <div className="mx-auto max-w-4xl px-6 py-10">
+    {/* Header */}
+    <div className="mb-8">
+      <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-sky-400/10 px-3 py-1 text-xs font-medium text-sky-300">
+        <Code2 size={13} /> Skrypt do konsoli przeglądarki
       </div>
+      <h1 className="text-2xl font-semibold text-white">Scraper Filmweb</h1>
+      <p className="mt-2 text-slate-400">
+        Uruchamiany bezpośrednio w przeglądarce — nie wymaga instalacji, nie potrzebuje dostępu
+        do serwera. Wszystko dzieje się lokalnie na Twoim koncie Filmweb.
+      </p>
+    </div>
+
+    {/* Banner zachęcający do desktop */}
+    <div className="mb-6 flex items-start gap-3 rounded-2xl border border-emerald-400/20 bg-emerald-400/5 p-5">
+      <Download size={18} className="mt-0.5 shrink-0 text-emerald-300" />
+      <div>
+        <div className="mb-1 font-medium text-emerald-300">
+          💡 Zalecane: Pobierz wersję desktop
+        </div>
+        <p className="text-sm text-emerald-400/80">
+          Aplikacja desktopowa CineBridge oferuje <strong>pełną automatyzację</strong> —
+          automatyczne logowanie, obsługę captcha, pobieranie ulubionych i list użytkownika,
+          oraz bezpośredni import do bazy bez ręcznego wgrywania plików CSV.
+        </p>
+        <a
+          href="https://github.com/your-username/cinebridge/releases"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-3 inline-flex items-center gap-2 rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-emerald-300"
+        >
+          <Download size={14} />
+          Pobierz CineBridge Desktop (darmowe)
+        </a>
+      </div>
+    </div>
 
       {/* Instructions */}
       <section className="mb-8 rounded-2xl border border-white/10 bg-white/5 p-6">

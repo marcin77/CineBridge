@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>&#x1f3ac; CineBridge</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <span id="markdown-mermaid" aria-hidden="true" data-config="{&quot;darkModeTheme&quot;:&quot;vscode&quot;,&quot;lightModeTheme&quot;:&quot;vscode&quot;,&quot;maxTextSize&quot;:50000,&quot;clickDrag&quot;:&quot;alt&quot;,&quot;showControls&quot;:&quot;onHoverOrFocus&quot;,&quot;resizable&quot;:true,&quot;maxHeight&quot;:&quot;&quot;}"></span>
+				<h1 id="-cinebridge">🎬 CineBridge</h1>
+<p><strong>Migruj swoją historię filmową z <a href="http://Filmweb.pl">Filmweb.pl</a> do Letterboxd, Trakt, Simkl i innych serwisów — w pełni automatycznie.</strong></p>
+<p>CineBridge to aplikacja desktopowa z wbudowanym scraperem Filmweb, który pobiera Twoje oceny, komentarze, watchlistę i listy, a następnie eksportuje je do formatów kompatybilnych z popularnymi serwisami filmowymi.</p>
+<hr>
+<h2 id="-główne-funkcje">✨ Główne funkcje</h2>
+<h3 id="-natywny-scraper-filmweb-wersja-desktop">🤖 Natywny scraper Filmweb (wersja desktop)</h3>
+<ul>
+<li><strong>Zero konfiguracji</strong> — otwórz aplikację, zaloguj się, kliknij &quot;Synchronizuj&quot;</li>
+<li><strong>Automatyczne logowanie</strong> z obsługą CAPTCHA (natywne okno przeglądarki Electron)</li>
+<li><strong>Auto re-login</strong> przy wygaśnięciu sesji (synchronizacja trwa bez przerwy nawet przy 30+ minutach pracy)</li>
+<li><strong>Checkpoint co 50 pozycji</strong> — wznawia od miejsca przerwania po Stop/błędzie/restarcie</li>
+<li><strong>Circuit breaker</strong> — automatycznie zmniejsza równoległość przy rate limitach (429)</li>
+<li><strong>Równoległe pobieranie</strong> (2-3 requestów jednocześnie) z jitterem — 2-3x szybsze niż wersja sekwencyjna</li>
+</ul>
+<h4 id="co-scraper-zbiera">Co scraper zbiera?</h4>
+<ul>
+<li>✅ <strong>Oceny filmów</strong> (data oceny, komentarz)</li>
+<li>✅ <strong>Oceny seriali</strong> (data oceny, komentarz)</li>
+<li>✅ <strong>Watchlist</strong> (Chcę zobaczyć)</li>
+<li>✅ <strong>Ulubione</strong></li>
+<li>✅ <strong>Listy użytkownika</strong> (robocze i opublikowane)</li>
+<li>✅ <strong>Reżyserów</strong> (do lepszego matchingu w Letterboxd)</li>
+</ul>
+<h3 id="-elastyczny-import">📥 Elastyczny import</h3>
+<p>Oprócz wbudowanego scrapera, CineBridge obsługuje:</p>
+<ul>
+<li><a href="https://github.com/ppatrzyk/filmweb-export">filmweb-export</a> (Python CLI)</li>
+<li><a href="https://github.com/JSerwatka/Filmweb2Letterboxd">Filmweb2Letterboxd</a></li>
+<li>Własny CSV (parser rozpoznaje aliasy kolumn automatycznie)</li>
+</ul>
+<h3 id="-matching-tmdb">🔍 Matching TMDB</h3>
+<ul>
+<li>Automatyczne dopasowanie tytułów do TMDB ID</li>
+<li>Wykrywanie duplikatów</li>
+<li>Ręczna korekta przez wyszukiwarkę</li>
+</ul>
+<h3 id="-eksport-do-serwisów">📤 Eksport do serwisów</h3>
+<h4 id="️-letterboxd">📽️ Letterboxd</h4>
+<ul>
+<li><strong>ZIP z podziałem na pliki:</strong>
+<ul>
+<li><code>watched.csv</code> — historia oglądania z ocenami i recenzjami</li>
+<li><code>watchlist.csv</code> — filmy do obejrzenia</li>
+<li><code>lists/*.csv</code> — każda lista Filmweb osobno</li>
+</ul>
+</li>
+<li>Kolumna <code>Directors</code> dla lepszego matchingu</li>
+<li>Automatyczna konwersja ocen 1-10 → 0.5-5.0</li>
+</ul>
+<h4 id="-trakttv">🔥 <a href="http://Trakt.tv">Trakt.tv</a></h4>
+<ul>
+<li>OAuth 2.0 Device Flow (bezpieczne logowanie bez hasła)</li>
+<li>Sync ocen, dat obejrzenia, komentarzy</li>
+<li>Obsługa watchlisty i list</li>
+</ul>
+<h4 id="-simkl">📺 Simkl</h4>
+<ul>
+<li>Format CSV zgodny z oficjalnym <a href="https://simkl.com/apps/import/csv/">importerem Simkl</a></li>
+</ul>
+<h4 id="-universal-csv">📊 Universal CSV</h4>
+<ul>
+<li>Pełny format zachowujący wszystkie pola (backup/archiwizacja)</li>
+</ul>
+<h3 id="-dodatki">🎨 Dodatki</h3>
+<ul>
+<li><strong>Theme switcher</strong> (jasny / ciemny / system)</li>
+<li><strong>Wersja web</strong> (scraper konsolowy jako fallback dla non-Electron)</li>
+<li><strong>SQLite</strong> — lokalna baza danych, zero konfiguracji</li>
+</ul>
+<hr>
+<h2 id="-screenshot">📸 Screenshot</h2>
+<hr>
+<h2 id="️-stack-technologiczny">🛠️ Stack technologiczny</h2>
+<table>
+<thead>
+<tr>
+<th>Warstwa</th>
+<th>Technologia</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Desktop</strong></td>
+<td>Electron 33+</td>
+</tr>
+<tr>
+<td><strong>Frontend</strong></td>
+<td>Next.js 15 (App Router), React 19</td>
+</tr>
+<tr>
+<td><strong>Styling</strong></td>
+<td>Tailwind CSS v4, next-themes</td>
+</tr>
+<tr>
+<td><strong>Database</strong></td>
+<td>SQLite (better-sqlite3), Drizzle ORM</td>
+</tr>
+<tr>
+<td><strong>Language</strong></td>
+<td>TypeScript</td>
+</tr>
+<tr>
+<td><strong>Scraper</strong></td>
+<td>Native Electron BrowserWindow + Filmweb API</td>
+</tr>
+<tr>
+<td><strong>Build</strong></td>
+<td>electron-builder (AppImage/DMG/EXE)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="-instalacja-i-uruchomienie">📦 Instalacja i uruchomienie</h2>
+<h3 id="dla-użytkowników-końcowych-binarka">Dla użytkowników końcowych (binarka)</h3>
+<ol>
+<li><strong>Pobierz najnowszą wersję</strong> z <a href="https://github.com/your-username/cinebridge/releases">Releases</a></li>
+<li><strong>Linux:</strong> <code>CineBridge-1.0.0-x86_64.AppImage</code></li>
+</ol>
+<pre><code class="language-markdown">   chmod +x CineBridge-1.0.0-x86<span class="hljs-emphasis">_64.AppImage
+   ./CineBridge-1.0.0-x86_</span>64.AppImage
+</code></pre>
+<ol start="3">
+<li><strong>Windows:</strong> <code>CineBridge-Setup-1.0.0.exe</code> (TODO)</li>
+<li><strong>macOS:</strong> <code>CineBridge-1.0.0.dmg</code> (TODO)</li>
+</ol>
+<h3 id="dla-developerów">Dla developerów</h3>
+<h4 id="wymagania">Wymagania</h4>
+<ul>
+<li>Node.js 18+ (zalecane 20 LTS)</li>
+<li>npm lub yarn</li>
+</ul>
+<h4 id="kroki">Kroki</h4>
+<pre><code class="language-bash"><span class="hljs-comment"># 1. Sklonuj repo</span>
+git <span class="hljs-built_in">clone</span> https://github.com/your-username/cinebridge.git
+<span class="hljs-built_in">cd</span> cinebridge
+
+<span class="hljs-comment"># 2. Zainstaluj zależności</span>
+npm install
+
+<span class="hljs-comment"># Next.js dev server + Electron jednocześnie</span>
+npm run electron:dev
+
+<span class="hljs-comment"># Lub tylko Next.js (bez Electrona — np. do pracy nad UI)</span>
+npm run dev
+
+</code></pre>
+<p>Aplikacja Electron otworzy się automatycznie na <a href="http://localhost:3000">http://localhost:3000</a> (Next.js dev server w tle).</p>
+<h2 id="-build-produkcyjny">🚀 Build produkcyjny</h2>
+<pre><code class="language-bash"><span class="hljs-comment"># Pakuj dla Linux (AppImage)</span>
+npm run build:linux
+
+<span class="hljs-comment"># Pakuj dla Windows (exe)</span>
+npm run build:win
+
+<span class="hljs-comment"># Wynik:</span>
+<span class="hljs-comment"># - Linux: dist/CineBridge-1.0.0-x86_64.AppImage</span>
+<span class="hljs-comment"># - Windows: dist/CineBridge-Setup-1.0.0.exe</span>
+<span class="hljs-comment"># - macOS: dist/CineBridge-1.0.0.dmg</span>
+</code></pre>
+<h2 id="-struktura-projektu">📂 Struktura projektu</h2>
+<p>cinebridge/
+├── electron/                 # Electron main process
+│   ├── main.js               # Entry point, IPC handlers, auto-upload
+│   ├── preload.js            # Context bridge (IPC → renderer)
+│   ├── next-server.js        # Forkowany Next.js w produkcji
+│   └── scraper/              # Scraper Filmweb
+│       ├── filmweb-auth.js   # Logowanie przez natywne okno
+│       ├── filmweb-client.js # API client (fetch + circuit breaker)
+│       ├── filmweb-scraper.js# Główna logika scrapera
+│       ├── scraper-runner.js # Orchestration, checkpoint, CSV export
+│       └── csv-builder.js    # Budowanie CSV z bazy scrapera
+├── src/
+│   ├── app/                  # Next.js App Router (strony)
+│   │   ├── api/              # API routes (upload, export, Trakt, TMDB)
+│   │   ├── import/           # Strony importu (lista batchy, szczegóły)
+│   │   ├── export/           # Strona eksportu
+│   │   ├── scraper/          # Panel scrapera Filmweb
+│   │   ├── settings/         # Ustawienia (TMDB API key)
+│   │   └── connections/      # Połączenia z Trakt
+│   ├── components/           # Komponenty React (Nav, ThemeToggle, etc.)
+│   ├── db/                   # Drizzle schema + connection
+│   └── lib/                  # Utils (parsery, exportery, matching, theme)
+├── drizzle/                  # Migracje SQL (auto-generowane)
+├── public/
+│   ├── filmweb-scraper/      # Stary skrypt konsolowy (fallback dla web)
+│   └── templates/            # Szablony CSV
+├── build/icons/              # Ikony aplikacji (Electron)
+├── data/                     # Lokalna baza SQLite (gitignore!)
+├── dist/                     # Buildy Electron (gitignore!)
+└── .github/workflows/        # CI/CD (build, release)</p>
+<h2 id="-skrypty-npm">📝 Skrypty NPM</h2>
+<pre><code class="language-markdown">| Skrypt | Opis |
+|--------|------|
+| <span class="hljs-code">`npm run dev`</span> | Next.js dev server bez Electrona |
+| <span class="hljs-code">`npm run electron:dev`</span> | Next.js dev + Electron (hot reload) |
+| <span class="hljs-code">`npm run build`</span> | Build Next.js (standalone) |
+| <span class="hljs-code">`npm run build:linux`</span> | Build Next.js + pakuj AppImage (Linux) |
+| <span class="hljs-code">`npm run build:win`</span> | Build Next.js + pakuj EXE (Windows) |
+| <span class="hljs-code">`npm run dist`</span> | Alias dla build:linux |
+| <span class="hljs-code">`npm run pack:linux`</span> | Tylko pakuj Electron (bez build Next.js) |
+| <span class="hljs-code">`npm run rebuild:electron`</span> | Przebuduj natywne moduły (po zmianie wersji Electron) |
+| <span class="hljs-code">`npm run db:generate`</span> | Generuj migracje Drizzle z schema |
+| <span class="hljs-code">`npm run db:push`</span> | Zastosuj migracje (dev mode) |
+</code></pre>
+<h2 id="-bezpieczeństwo-danych">🔒 Bezpieczeństwo danych</h2>
+<p>Wszystkie dane lokalne — baza SQLite zapisywana w ~/.config/cinebridge/ (Linux) lub odpowiedniku w Windows/macOS
+Credentials zaszyfrowane — hasła zapisywane przez safeStorage Electron (system keychain/Credential Manager)
+Scraper używa Twojej sesji Filmweb — nie wysyła danych do żadnych zewnętrznych serwerów poza Filmweb API i (opcjonalnie) Trakt/TMDB przy matchingu
+Offline-first — pełna funkcjonalność bez internetu (poza synchronizacją/matchingiem)</p>
+<h2 id="-wkład-w-projekt">🤝 Wkład w projekt</h2>
+<p>Fork repo
+Stwórz branch (git checkout -b feature/amazing-feature)
+Commit (git commit -m 'Add amazing feature')
+Push (git push origin feature/amazing-feature)
+Otwórz Pull Request</p>
+<h2 id="-licencja">📄 Licencja</h2>
+<p>MIT License — zobacz LICENSE</p>
+<h2 id="-podziękowania">🙏 Podziękowania</h2>
+<ul>
+<li>** filmweb-export — inspiracja dla parsera
+Filmweb2Letterboxd — kompatybilność formatów
+Społeczność Filmweb — za cierpliwość do scrapeingu 😅</li>
+</ul>
+<h2 id="️-disclaimer">⚠️ Disclaimer:</h2>
+<p>CineBridge <strong>nie jest oficjalnie powiązane</strong> z <a href="http://Filmweb.pl">Filmweb.pl</a>, Letterboxd, <a href="http://Trakt.tv">Trakt.tv</a>, Simkl ani innymi serwisami.</p>
+<p>Scraper korzysta <strong>z nieoficjalnych API</strong> Filmweb — używasz go na <strong>własną odpowiedzialność</strong>. Bądź uprzejmy dla serwerów Filmweb:</p>
+<ul>
+<li>**Nie nadużywaj równoległości (domyślnie 2-3 requesty jednocześnie to bezpieczny limit)</li>
+<li>**Nie uruchamiaj scrapera co 5 minut — raz dziennie/tygodniowo to rozsądna częstotliwość</li>
+<li>**Jeśli dostaniesz rate limit (429), poczekaj zanim spróbujesz ponownie</li>
+</ul>
+<p><strong>Made with ❤️ for film lovers who want to own their data.</strong></p>
+<p>License: MIT</p>
+
+            
+            
+        </body>
+        </html>

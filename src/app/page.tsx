@@ -37,19 +37,20 @@ export default async function DashboardPage() {
             <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
               Przenieś swoją historię filmową<br className="hidden sm:block" /> bez ręcznego klepania.
             </h1>
-            <p className="mt-3 max-w-2xl text-slate-400">
-              Użyj wbudowanego scrapera przeglądarki, aby wyeksportować oceny, komentarze
-              i listy z Filmweb, a następnie wgraj plik CSV do CineBridge — i pobierz
-              gotowy eksport dla Letterboxd, Trakt lub dowolnego innego serwisu.
-            </p>
+          <p className="mt-3 max-w-2xl text-slate-400">
+            Użyj wbudowanego scrapera (wersja desktop) lub skryptu przeglądarki,
+            aby wyeksportować oceny, komentarze i listy z Filmweb. Następnie wgraj
+            plik CSV do CineBridge i pobierz gotowy eksport dla Letterboxd, Trakt
+            lub dowolnego innego serwisu.
+          </p>
           </div>
           <div className="flex flex-col gap-2">
-            <Link
-              href="/scraper"
-              className="flex items-center gap-2 rounded-xl bg-emerald-400 px-5 py-3 font-medium text-slate-950 transition hover:bg-emerald-300"
-            >
-              <Code2 size={18} /> Skrypt scrapera <ArrowRight size={16} />
-            </Link>
+          <Link
+            href="/scraper"
+            className="flex items-center gap-2 rounded-xl bg-emerald-400 px-5 py-3 font-medium text-slate-950 transition hover:bg-emerald-300"
+          >
+            <Code2 size={18} /> Scraper Filmweb <ArrowRight size={16} />
+          </Link>
             <Link
               href="/import"
               className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-medium text-white transition hover:bg-white/10"
@@ -84,8 +85,8 @@ export default async function DashboardPage() {
           {[
             {
               step: "1",
-              title: "Scraper w przeglądarce",
-              desc:  "Wklej skrypt JS w konsolę DevTools na filmweb.pl — automatycznie pobiera oceny, komentarze i listy.",
+              title: "Scraper Filmweb",
+              desc:  "Użyj wbudowanego scrapera (desktop) lub skryptu JS który wklej w konsolę DevTools na filmweb.pl — automatycznie pobiera oceny, komentarze i listy.",
               href:  "/scraper",
               color: "from-sky-400 to-blue-500",
             },

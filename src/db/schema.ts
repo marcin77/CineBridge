@@ -43,11 +43,15 @@ export const mediaItems = sqliteTable(
     title: text("title").notNull(),
     originalTitle: text("original_title"),
     year: integer("year"),
+    director: text("director"), // <- NOWA KOLUMNA
     userRating: integer("user_rating"),
     ratedAt: text("rated_at"),
     watchedAt: text("watched_at"),
     comment: text("comment"),
     listName: text("list_name"),
+    listId: text("list_id"),              // ID listy na Filmweb
+    listStatus: text("list_status"),      // status na liście
+    favorite: text("favorite"),           // "tak"/"nie" - czy ulubione
 
     imdbId: text("imdb_id"),
     tmdbId: text("tmdb_id"),
@@ -64,6 +68,7 @@ export const mediaItems = sqliteTable(
 
     createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
     updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+    tmdbSearched: integer("tmdb_searched", { mode: "boolean" }).notNull().default(false),
   },
   (table) => [
     index("media_items_batch_idx").on(table.importBatchId),
@@ -121,4 +126,13 @@ export const traktMatchCache = sqliteTable("trakt_match_cache", {
   confidence: integer("confidence").notNull(),
   score: real("score"),
   createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+});
+
+// ---------------------------------------------------------------------------
+// App settings (key-value store)
+// ---------------------------------------------------------------------------
+export const settings = sqliteTable("settings", {
+  key: text("key").primaryKey(),
+  value: text("value"),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
 });

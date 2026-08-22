@@ -35,7 +35,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ batchId
   const [batch] = await db.select().from(importBatches).where(eq(importBatches.id, id));
   if (!batch) return Response.json({ error: "Nie znaleziono importu." }, { status: 404 });
 
-  await db.update(importBatches).set({ status: "syncing", updatedAt: new Date() }).where(eq(importBatches.id, id));
+  await db
+    .update(importBatches)
+    .set({ status: "syncing", updatedAt: new Date().toISOString() })
+    .where(eq(importBatches.id, id));
 
   const items = await db
     .select()
@@ -71,7 +74,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ batchId
       year: item.matchedYear ?? item.year,
     });
     const isShow = (item.traktType ?? item.type) === "show";
-    const watchedAtIso = (item.watchedAt ?? item.ratedAt ?? new Date()).toISOString();
+    const watchedAtIso = item.watchedAt ?? item.ratedAt ?? new Date().toISOString();
 
     if (item.category === "watched") {
       const historyPayload = { ...payload, watched_at: watchedAtIso };
@@ -80,7 +83,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ batchId
         const ratingPayload = {
           ...payload,
           rating: item.userRating,
-          rated_at: (item.ratedAt ?? item.watchedAt ?? new Date()).toISOString(),
+          rated_at: item.ratedAt ?? item.watchedAt ?? new Date().toISOString(),
         };
         (isShow ? ratingShows : ratingMovies).push(ratingPayload);
       }
@@ -164,15 +167,23 @@ export async function POST(req: Request, { params }: { params: Promise<{ batchId
   if (succeededIds.length) {
     await db
       .update(mediaItems)
-      .set({ syncedToTrakt: true, syncedAt: new Date(), syncError: null, updatedAt: new Date() })
+      .set({
+        syncedToTrakt: true,
+        syncedAt: new Date().toISOString(),
+        syncError: null,
+        updatedAt: new Date().toISOString(),
+      })
       .where(inArray(mediaItems.id, succeededIds));
   }
   if (failedIds.length) {
     await db
       .update(mediaItems)
-      .set({ syncError: "Błąd synchronizacji – sprawdź logi.", updatedAt: new Date() })
+      .set({
+        syncError: "Błąd synchronizacji – sprawdź logi.",
+        updatedAt: new Date().toISOString(),
+      })
       .where(inArray(mediaItems.id, failedIds));
-  }
+      }
 
   const [remaining] = await db
     .select({ value: count() })
@@ -195,7 +206,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ batchId
     .set({
       status: remaining.value === 0 ? "completed" : "syncing",
       syncedItems: syncedCount.value,
-      updatedAt: new Date(),
+      updatedAt: new Date().toISOString(),
     })
     .where(eq(importBatches.id, id));
 

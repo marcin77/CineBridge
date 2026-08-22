@@ -1,68 +1,59 @@
-# Konfiguracja electron-buildera dla CineBridge.
-# Docelowo plik trafia do KORZENIA repo CineBridge: electron-builder.yml
-#
-# Zakłada, że:
-#  - next.config.ts ma ustawione: output: "standalone"
-#  - przed buildem uruchomiony był `npm run electron:prepare`
-#    (dokleja public/ i .next/static/ do .next/standalone)
-#  - w package.json jest pole: "main": "electron/main.js"
-#  - ikona aplikacji leży w build/icon.png (min. 512x512, PNG z kanałem alfa)
-
-appId: com.marcin77.cinebridge
+appId: com.cinebridge.app
 productName: CineBridge
-copyright: "Copyright © CineBridge"
+copyright: Copyright © 2026 CineBridge
 
 directories:
-  output: release
+  output: dist
   buildResources: build
 
-# Do paczki .asar trafia tylko kod Electrona - reszta aplikacji
-# (serwer Next.js) jest kopiowana jako "extraResources" i uruchamiana
-# jako osobny proces Node.
 files:
-  - electron/**/*
-  - package.json
+  - "electron/**/*"
+  - "package.json"
+  - "!electron/scraper/test-*.js"
   - "!**/*.map"
 
+asarUnpack:
+  - "node_modules/better-sqlite3/**/*"
+
+# extraResources robi surowe kopiowanie plikow (bez analizy/dedupikacji
+# node_modules), dzieki czemu vendorowany node_modules wewnatrz
+# .next/standalone pozostaje nietkniety, a katalog jest fizycznie
+# na dysku (poza asar), wiec process.chdir() dziala poprawnie.
 extraResources:
-  - from: .next/standalone
-    to: app-standalone
+  - from: ".next/standalone"
+    to: "app"
     filter:
       - "**/*"
+  - from: "drizzle"
+    to: "drizzle"
+    filter:
+      - "**/*.sql"
+      - "meta/_journal.json"
 
-# Natywne moduły (m.in. binarki wbudowanego Postgresa) muszą leżeć
-# poza archiwum .asar, żeby dało się je uruchomić jako procesy systemowe.
-asarUnpack:
-  - "**/*.node"
-  - "node_modules/embedded-postgres/**"
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64
+  category: AudioVideo
+  icon: build/icons/
+  synopsis: Migruj historię filmową z Filmweb
+  description: Scraper Filmweb + eksport do Letterboxd, Trakt, Simkl
+
+appImage:
+  artifactName: CineBridge-${version}-${arch}.AppImage
 
 win:
   target:
     - target: nsis
-      arch: [x64]
-  icon: build/icon.png
-  artifactName: "${productName}-${version}-Setup.${ext}"
+      arch:
+        - x64
+  icon: build/icons/icon.ico
+  artifactName: CineBridge-Setup-${version}.exe
 
 nsis:
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
-  createDesktopShortcut: always
+  createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: CineBridge
-
-linux:
-  target:
-    - target: AppImage
-      arch: [x64]
-  icon: build/icon.png
-  category: AudioVideo
-  maintainer: marcin77
-  executableName: cinebridge
-
-appImage:
-  artifactName: "${productName}-${version}.${ext}"
-
-# Publikację robi krok w GitHub Actions (softprops/action-gh-release),
-# więc tu wyłączamy automatyczną publikację electron-buildera.
-publish: null

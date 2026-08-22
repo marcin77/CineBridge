@@ -1,1 +1,0 @@
-ALTER TABLE "media_items" ADD COLUMN "synced_at" timestamp with time zone;
