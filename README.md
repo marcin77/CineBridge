@@ -138,6 +138,7 @@ npm run build:win
 
 ## 📂 Struktura projektu
 
+``` bash
 cinebridge/
 ├── electron/                 # Electron main process
 │   ├── main.js               # Entry point, IPC handlers, auto-upload
@@ -168,6 +169,7 @@ cinebridge/
 ├── data/                     # Lokalna baza SQLite (gitignore!)
 ├── dist/                     # Buildy Electron (gitignore!)
 └── .github/workflows/        # CI/CD (build, release)
+```
 
 ## 📝 Skrypty NPM
 
@@ -188,24 +190,26 @@ cinebridge/
 
 ## 🔒 Bezpieczeństwo danych
 
-Wszystkie dane lokalne — baza SQLite zapisywana w ~/.config/cinebridge/ (Linux) lub odpowiedniku w Windows/macOS
-Credentials zaszyfrowane — hasła zapisywane przez safeStorage Electron (system keychain/Credential Manager)
-Scraper używa Twojej sesji Filmweb — nie wysyła danych do żadnych zewnętrznych serwerów poza Filmweb API i (opcjonalnie) Trakt/TMDB przy matchingu
-Offline-first — pełna funkcjonalność bez internetu (poza synchronizacją/matchingiem)
+- **Wszystkie dane lokalne** — baza SQLite zapisywana w ~/.config/cinebridge/ (Linux) lub odpowiedniku w Windows/macOS
+- **Credentials zaszyfrowane** — hasła zapisywane przez safeStorage Electron (system keychain/Credential Manager)
+- **Scraper używa Twojej sesji Filmweb** — nie wysyła danych do żadnych zewnętrznych serwerów poza Filmweb API i (opcjonalnie) Trakt/TMDB przy matchingu
+- **Offline-first** — pełna funkcjonalność bez internetu (poza synchronizacją/matchingiem)
 
 ## 🐛 Znane problemy i limitacje
 
-Scraper nie pobiera dat obejrzenia dla filmów obejrzanych wielokrotnie — Filmweb API nie udostępnia tej informacji (tylko data pierwszej oceny)
-Rate limit (429) przy bardzo dużych bibliotekach (2000+ pozycji) — circuit breaker automatycznie spada do trybu sekwencyjnego (wolniejszy, ale bezpieczny)
-Matching TMDB nie jest 100% dokładny — szczególnie dla polskich produkcji lub filmów z nietypowymi tytułami (można poprawić ręcznie)
+**Scraper nie pobiera dat obejrzenia dla filmów obejrzanych wielokrotnie** — Filmweb API nie udostępnia tej informacji (tylko data pierwszej oceny)
+**Rate limit (429) przy bardzo dużych bibliotekach (2000+ pozycji)** — circuit breaker automatycznie spada do trybu sekwencyjnego (wolniejszy, ale bezpieczny)
+**Matching TMDB nie jest 100% dokładny** — szczególnie dla polskich produkcji lub filmów z nietypowymi tytułami (można poprawić ręcznie)
 
 ## 🤝 Wkład w projekt
 
-Fork repo
-Stwórz branch (git checkout -b feature/amazing-feature)
-Commit (git commit -m 'Add amazing feature')
-Push (git push origin feature/amazing-feature)
-Otwórz Pull Request
+Contributiony mile widziane!
+
+1. Fork repo
+2. Stwórz branch dla featury (git checkout -b feature/amazing-feature)
+3. Commit zmian (git commit -m 'Add amazing feature')
+4. Push do brancha (git push origin feature/amazing-feature)
+5. Otwórz Pull Request
 
 ## 📄 Licencja
 
@@ -213,9 +217,10 @@ MIT License — zobacz LICENSE
  
 ## 🙏 Podziękowania 
 
-- ** filmweb-export — inspiracja dla parsera
-Filmweb2Letterboxd — kompatybilność formatów
-Społeczność Filmweb — za cierpliwość do scrapeingu 😅
+- filmweb-export — inspiracja dla parsera
+- Filmweb2Letterboxd — kompatybilność formatów
+- Społeczność Filmweb — za cierpliwość do scrapeingu 😅
+
 
 ## ⚠️ Disclaimer: 
 
@@ -223,9 +228,9 @@ CineBridge **nie jest oficjalnie powiązane** z Filmweb.pl, Letterboxd, Trakt.tv
 
 Scraper korzysta **z nieoficjalnych API** Filmweb — używasz go na **własną odpowiedzialność**. Bądź uprzejmy dla serwerów Filmweb:
 
-- **Nie nadużywaj równoległości (domyślnie 2-3 requesty jednocześnie to bezpieczny limit)
-- **Nie uruchamiaj scrapera co 5 minut — raz dziennie/tygodniowo to rozsądna częstotliwość
-- **Jeśli dostaniesz rate limit (429), poczekaj zanim spróbujesz ponownie
+- Nie nadużywaj równoległości (domyślnie 2-3 requesty jednocześnie to bezpieczny limit)
+- Nie uruchamiaj scrapera co 5 minut — raz dziennie/tygodniowo to rozsądna częstotliwość
+- Jeśli dostaniesz rate limit (429), poczekaj zanim spróbujesz ponownie
 
 **Made with ❤️ for film lovers who want to own their data.**
 
