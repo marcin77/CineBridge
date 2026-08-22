@@ -2,13 +2,198 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8">
-  <title>CineBridge - Migruj z Filmweb do Letterboxd, Trakt, Simkl</title>
-  <meta name="description" content="Darmowa aplikacja do migracji historii filmowej z Filmweb do Letterboxd, Trakt i Simkl. Automatyczny scraper, eksport CSV, dla Windows i Linux.">
-  <meta name="keywords" content="filmweb, letterboxd, trakt, simkl, migracja filmów, eksport ocen filmów">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CineBridge — Migruj historię filmową z Filmweb</title>
+  <meta name="description" content="Darmowa aplikacja desktop do migracji historii filmowej z Filmweb do Letterboxd, Trakt.tv i Simkl. Automatyczny scraper, eksport CSV, Windows i Linux.">
+  <meta name="keywords" content="filmweb, letterboxd, trakt, simkl, migracja filmów, eksport ocen, cinebridge">
+  <meta name="author" content="Marcin77">
+
+  <!-- Open Graph / Social sharing -->
+  <meta property="og:title" content="CineBridge — Migruj historię filmową z Filmweb">
+  <meta property="og:description" content="Automatycznie przenieś oceny filmów z Filmweb do Letterboxd, Trakt i Simkl.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="assets/social-preview.png">
+
+  <link rel="icon" href="assets/favicon.png" type="image/png">
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
-  <h1>🎬 CineBridge</h1>
-  <p>Migruj swoją historię filmową z Filmweb do Letterboxd, Trakt i Simkl</p>
-  <a href="https://github.com/TWOJA-NAZWA/CineBridge/releases/latest">Pobierz najnowszą wersję</a>
+
+  <!-- ── NAVBAR ────────────────────────────────────────── -->
+  <nav class="navbar">
+    <div class="container nav-inner">
+      <a href="#" class="logo">🎬 CineBridge</a>
+      <div class="nav-links">
+        <a href="#features">Funkcje</a>
+        <a href="#how-it-works">Jak to działa</a>
+        <a href="#download">Pobierz</a>
+        <a href="https://github.com/Marcin77/CineBridge" class="nav-github" target="_blank">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          GitHub
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── HERO ──────────────────────────────────────────── -->
+  <header class="hero">
+    <div class="container hero-inner">
+      <div class="badge">✨ Open Source &nbsp;·&nbsp; Darmowe &nbsp;·&nbsp; Twoje dane zostają u Ciebie</div>
+      <h1>Migruj swoją historię<br><span class="gradient-text">filmową z Filmweb</span></h1>
+      <p class="hero-subtitle">
+        Automatyczny scraper + eksport do <strong>Letterboxd</strong>, <strong>Trakt.tv</strong>
+        i <strong>Simkl</strong>. Jedna aplikacja, kilka kliknięć, cała Twoja historia oglądania
+        bezpiecznie przeniesiona.
+      </p>
+      <div class="hero-cta">
+        <a href="#download" class="btn btn-primary">⬇ Pobierz za darmo</a>
+        <a href="https://github.com/Marcin77/CineBridge" class="btn btn-secondary" target="_blank">Zobacz kod źródłowy</a>
+      </div>
+      <div class="platforms">
+        <span>🐧 Linux (AppImage)</span>
+        <span>🪟 Windows (Installer)</span>
+      </div>
+    </div>
+    <div class="hero-glow"></div>
+  </header>
+
+  <!-- ── LOGOS / INTEGRACJE ────────────────────────────── -->
+  <section class="integrations">
+    <div class="container">
+      <p class="integrations-label">Eksportuj dane bezpośrednio do:</p>
+      <div class="integration-logos">
+        <div class="integration-item">Filmweb → </div>
+        <div class="integration-item">Letterboxd</div>
+        <div class="integration-item">Trakt.tv</div>
+        <div class="integration-item">Simkl</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── FEATURES ──────────────────────────────────────── -->
+  <section id="features" class="features">
+    <div class="container">
+      <h2 class="section-title">Wszystko czego potrzebujesz</h2>
+      <p class="section-subtitle">Proste, szybkie i bezpieczne narzędzie do migracji Twojej filmoteki</p>
+
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">🔄</div>
+          <h3>Automatyczny scraper</h3>
+          <p>Zaloguj się raz, a CineBridge samodzielnie pobierze całą historię ocenionych filmów i seriali z Twojego konta Filmweb.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📤</div>
+          <h3>Eksport wielu formatów</h3>
+          <p>Gotowe pliki CSV kompatybilne z Letterboxd, Trakt.tv oraz Simkl — bez ręcznego formatowania danych.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">💾</div>
+          <h3>Lokalna baza danych</h3>
+          <p>Wszystkie dane przechowywane są lokalnie w SQLite na Twoim komputerze. Żadne dane nie trafiają na zewnętrzne serwery.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔒</div>
+          <h3>Bezpieczne logowanie</h3>
+          <p>Dane logowania do Filmweb są szyfrowane lokalnie przy użyciu natywnego systemu bezpieczeństwa Twojego systemu operacyjnego.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🖥️</div>
+          <h3>Natywna aplikacja</h3>
+          <p>Prawdziwa aplikacja desktopowa (Electron) — bez przeglądarki, bez zakładek, po prostu instalujesz i używasz.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">⚡</div>
+          <h3>Szybkie i darmowe</h3>
+          <p>W pełni open source, bez reklam, bez subskrypcji, bez ukrytych kosztów. Zawsze będzie darmowe.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── HOW IT WORKS ──────────────────────────────────── -->
+  <section id="how-it-works" class="how-it-works">
+    <div class="container">
+      <h2 class="section-title">Jak to działa?</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="step-number">1</div>
+          <h3>Pobierz i zainstaluj</h3>
+          <p>Pobierz aplikację dla swojego systemu (Windows lub Linux) i zainstaluj w kilka sekund.</p>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <h3>Zaloguj się do Filmweb</h3>
+          <p>Podaj dane logowania — zostaną bezpiecznie zaszyfrowane lokalnie na Twoim urządzeniu.</p>
+        </div>
+        <div class="step">
+          <div class="step-number">3</div>
+          <h3>Uruchom scraper</h3>
+          <p>Aplikacja automatycznie pobierze pełną historię Twoich ocenionych filmów i seriali.</p>
+        </div>
+        <div class="step">
+          <div class="step-number">4</div>
+          <h3>Eksportuj i gotowe</h3>
+          <p>Pobierz gotowy plik CSV i zaimportuj go do Letterboxd, Trakt.tv lub Simkl.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── DOWNLOAD ──────────────────────────────────────── -->
+  <section id="download" class="download">
+    <div class="container">
+      <h2 class="section-title">Pobierz CineBridge</h2>
+      <p class="section-subtitle">Wybierz wersję dla swojego systemu operacyjnego</p>
+
+      <div class="download-cards">
+        <div class="download-card">
+          <div class="download-icon">🐧</div>
+          <h3>Linux</h3>
+          <p>Uniwersalny plik AppImage — działa na większości dystrybucji</p>
+          <a href="https://github.com/Marcin77/CineBridge/releases/latest" class="btn btn-primary" target="_blank">
+            Pobierz AppImage
+          </a>
+          <code class="install-hint">chmod +x CineBridge-*.AppImage && ./CineBridge-*.AppImage</code>
+        </div>
+        <div class="download-card">
+          <div class="download-icon">🪟</div>
+          <h3>Windows</h3>
+          <p>Standardowy instalator .exe — kreator instalacji krok po kroku</p>
+          <a href="https://github.com/Marcin77/CineBridge/releases/latest" class="btn btn-primary" target="_blank">
+            Pobierz Installer
+          </a>
+          <code class="install-hint">Uruchom CineBridge-Setup-*.exe</code>
+        </div>
+      </div>
+
+      <p class="all-releases">
+        <a href="https://github.com/Marcin77/CineBridge/releases" target="_blank">Zobacz wszystkie wersje →</a>
+      </p>
+    </div>
+  </section>
+
+  <!-- ── FOOTER ────────────────────────────────────────── -->
+  <footer class="footer">
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <div class="logo">🎬 CineBridge</div>
+        <p>Darmowe narzędzie open source do migracji historii filmowej.</p>
+      </div>
+      <div class="footer-links">
+        <a href="https://github.com/Marcin77/CineBridge" target="_blank">GitHub</a>
+        <a href="https://github.com/Marcin77/CineBridge/releases" target="_blank">Releases</a>
+        <a href="https://github.com/Marcin77/CineBridge/issues" target="_blank">Zgłoś problem</a>
+        <a href="https://github.com/Marcin77/CineBridge/blob/main/LICENSE" target="_blank">Licencja MIT</a>
+      </div>
+    </div>
+    <div class="container">
+      <p class="footer-copy">© 2026 CineBridge · Stworzone przez Marcin77</p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
 </body>
 </html>
