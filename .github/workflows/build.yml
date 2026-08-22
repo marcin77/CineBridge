@@ -22,15 +22,12 @@ jobs:
       - name: Install Linux system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
-            python3 \
-            libfuse2
+          sudo apt-get install -y build-essential python3 libfuse2
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Build AppImage (kompletny proces)
+      - name: Build AppImage
         run: npm run build:linux
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -54,13 +51,21 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
+      - name: Configure node-gyp to use Visual Studio 2022
+        run: |
+          npm config set msvs_version 2022
+          npm config set python python3
+
       - name: Install dependencies
         run: npm ci
+        env:
+          npm_config_msvs_version: '2022'
 
-      - name: Build Windows Installer (kompletny proces)
+      - name: Build Windows Installer
         run: npm run build:win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          npm_config_msvs_version: '2022'
 
       - name: Upload Installer
         uses: actions/upload-artifact@v4
