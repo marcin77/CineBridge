@@ -51,33 +51,41 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
-      - name: Install windows-build-tools
-        run: |
-          npm install --global --prefer-offline node-gyp@latest
-          node-gyp --version
-        shell: pwsh
-
       - name: Add MSBuild to PATH
         uses: microsoft/setup-msbuild@v2
         with:
           msbuild-architecture: x64
 
-      - name: Install dependencies
+      - name: Upgrade node-gyp globally
+        run: npm install --global node-gyp@latest
+        shell: pwsh
+
+      - name: Install dependencies (skip scripts)
         run: npm ci --ignore-scripts
         shell: pwsh
 
-      - name: Rebuild better-sqlite3 manually
+      - name: Patch node-gyp in better-sqlite3
+        run: |
+          # Wymuś użycie najnowszego node-gyp w better-sqlite3
+          $ngPath = "$(npm root -g)\node-gyp"
+          Write-Host "Global node-gyp path: $ngPath"
+          node-gyp --version
+        shell: pwsh
+
+      - name: Rebuild better-sqlite3 for Electron
         run: |
           $electronVersion = node -e "console.log(require('./node_modules/electron/package.json').version)"
           Write-Host "Electron version: $electronVersion"
-          npx node-gyp rebuild `
-            --target=$electronVersion `
-            --arch=x64 `
-            --dist-url=https://electronjs.org/headers `
-            --directory=node_modules/better-sqlite3
+          
+          # Użyj globalnego node-gyp (zaktualizowanego)
+          $env:npm_config_node_gyp = "$(npm root -g)\node-gyp\bin\node-gyp.js"
+          
+          npx --yes @electron/rebuild `
+            --version $electronVersion `
+            --arch x64 `
+            --module-dir node_modules/better-sqlite3 `
+            --only better-sqlite3
         shell: pwsh
-        env:
-          VCINSTALLDIR: 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\'
 
       - name: Build Windows Installer
         run: npm run build:win
