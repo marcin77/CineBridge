@@ -41,19 +41,29 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-      - name: Setup Visual Studio environment
+      - name: Add MSBuild to PATH
         uses: microsoft/setup-msbuild@v2
+        with:
+          msbuild-architecture: x64
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
+        shell: pwsh
+      - name: Rebuild better-sqlite3 for Electron
+        run: |
+          $electronVersion = node -e "console.log(require('./node_modules/electron/package.json').version)"
+          Write-Host "Electron version: $electronVersion"
+          npx node-gyp rebuild `
+            --target=$electronVersion `
+            --arch=x64 `
+            --dist-url=https://electronjs.org/headers `
+            --directory=node_modules/better-sqlite3
+        shell: pwsh
         env:
-          MSVS_VERSION: '2022'
-          GYP_MSVS_VERSION: '2022'
+          VCINSTALLDIR: 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\'
       - name: Build Windows Installer
         run: npm run build:win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          MSVS_VERSION: '2022'
-          GYP_MSVS_VERSION: '2022'
       - uses: actions/upload-artifact@v4
         with:
           name: windows-build
