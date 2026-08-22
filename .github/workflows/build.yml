@@ -51,21 +51,19 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
-      - name: Setup Visual Studio environment
-        uses: microsoft/setup-msbuild@v2
+      - name: Install dependencies (skip native compilation)
+        run: npm ci --ignore-scripts
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Download prebuilt better-sqlite3 for Electron
+        run: |
+          npx electron-builder install-app-deps
         env:
-          MSVS_VERSION: '2022'
-          GYP_MSVS_VERSION: '2022'
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build Windows Installer
         run: npm run build:win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          MSVS_VERSION: '2022'
-          GYP_MSVS_VERSION: '2022'
 
       - name: Upload Installer
         uses: actions/upload-artifact@v4
