@@ -89,6 +89,28 @@ Oprócz wbudowanego scrapera, CineBridge obsługuje:
 3. **Windows:** `CineBridge-Setup-1.0.0.exe` (TODO)
 4. **macOS:** `CineBridge-1.0.0.dmg` (TODO)
 
+## 🐧 Linux — integracja AppImage z systemem
+
+Po pobraniu pliku `.AppImage` nadaj mu prawa wykonywania:
+
+```bash
+chmod +x CineBridge-*.AppImage
+```
+
+### AppImageLauncher (zalecane)
+
+Najprostszy sposób — automatycznie integruje AppImage z systemem,
+dodaje ikonę do launchera i paska zadań.
+
+```bash
+sudo add-apt-repository ppa:appimagelauncher-team/stable
+sudo apt update
+sudo apt install appimagelauncher
+```
+
+Uruchom AppImage i wybierz **"Integrate and run"** w oknie dialogowym.
+
+---
 
 ### Dla developerów
 

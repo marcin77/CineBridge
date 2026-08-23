@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.1.1]
+
+### 🐛 Naprawiono
+- Ikona aplikacji w pasku zadań na Linux (AppImage + GNOME/Zorin OS)
+- Poprawiono ścieżkę do ikony w trybie produkcyjnym (packaged app)
+- Jawne ustawienie ikony przez `mainWindow.setIcon()` po załadowaniu okna
+- Dodano `app.setDesktopFileName()` wymagane przez GNOME do poprawnego
+  matchowania okna z plikiem `.desktop`
+
+### 🎨 Poprawiono
+- Wygenerowano finalne ikony aplikacji (16px–1024px) z brandingiem CineBridge
+- Zielony rounded square + biała taśma filmowa (spójne z UI aplikacji)
+- Dodano plik źródłowy SVG ikony w `build/icon-source/`
+- Usunięto stary placeholder `96x96.png` (nieużywany przez electron-builder)
+- 
 ## [1.1.0]
 
 ### 🐛 Naprawiono
