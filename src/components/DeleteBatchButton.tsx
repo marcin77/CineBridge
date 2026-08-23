@@ -18,7 +18,6 @@ export default function DeleteBatchButton({ batchId, filename, redirectTo }: Pro
     if (!confirm(`Czy na pewno chcesz usunąć import "${filename}"? Tej operacji nie można cofnąć.`)) {
       return;
     }
-
     setDeleting(true);
     try {
       const res = await fetch(`/api/import/${batchId}`, { method: "DELETE" });
@@ -38,7 +37,7 @@ export default function DeleteBatchButton({ batchId, filename, redirectTo }: Pro
     <button
       onClick={handleDelete}
       disabled={deleting}
-      className="inline-flex items-center gap-1 text-xs text-red-400 hover:text-red-300 hover:underline disabled:opacity-50"
+      className="inline-flex items-center gap-1 text-xs text-red-500 hover:text-red-600 hover:underline disabled:opacity-50 dark:text-red-400 dark:hover:text-red-300"
       title="Usuń import"
     >
       <Trash2 size={12} />
