@@ -77,9 +77,24 @@ jobs:
         run: |
           VERSION_NUM="${{ steps.version.outputs.tag }}"
           VERSION_NUM="${VERSION_NUM#v}"
-          
-          NOTES=$(awk "/## \[${VERSION_NUM}\]/{flag=1; next} /## \[/{flag=0} flag" CHANGELOG.md)
-          
+
+          echo "Szukam sekcji dla wersji: ${VERSION_NUM}"
+          cat CHANGELOG.md | head -5
+
+          NOTES=$(awk "
+            /^## \[${VERSION_NUM}\]/ { flag=1; next }
+            /^## \[/ { if(flag) exit }
+            flag { print }
+          " CHANGELOG.md | sed 's/[[:space:]]*$//' | sed '/^$/d; $d')
+
+          if [ -z "$NOTES" ]; then
+            echo "⚠️ Nie znaleziono sekcji dla ${VERSION_NUM}"
+            NOTES="Brak wpisu w CHANGELOG.md dla tej wersji."
+          else
+            echo "✅ Znaleziono changelog:"
+            echo "$NOTES"
+          fi
+
           echo "notes<<EOF" >> $GITHUB_OUTPUT
           echo "$NOTES" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT

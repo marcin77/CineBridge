@@ -14,7 +14,7 @@
 - Zielony rounded square + biała taśma filmowa (spójne z UI aplikacji)
 - Dodano plik źródłowy SVG ikony w `build/icon-source/`
 - Usunięto stary placeholder `96x96.png` (nieużywany przez electron-builder)
-- 
+-
 ## [1.1.0]
 
 ### 🐛 Naprawiono
