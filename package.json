@@ -1,6 +1,6 @@
 {
   "name": "cinebridge",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Migruj historię filmową z Filmweb do Letterboxd, Trakt, Simkl i innych serwisów",
   "author": "Marcin77",
   "private": true,
