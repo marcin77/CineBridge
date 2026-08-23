@@ -8,12 +8,12 @@ interface Props {
 }
 
 export default function SettingsForm({ hasApiKey }: Props) {
-  const [apiKey, setApiKey]     = useState("");
-  const [saving, setSaving]     = useState(false);
-  const [testing, setTesting]   = useState(false);
-  const [saved, setSaved]       = useState(false);
+  const [apiKey, setApiKey]         = useState("");
+  const [saving, setSaving]         = useState(false);
+  const [testing, setTesting]       = useState(false);
+  const [saved, setSaved]           = useState(false);
   const [testResult, setTestResult] = useState<"ok" | "error" | null>(null);
-  const [keySet, setKeySet]     = useState(hasApiKey);
+  const [keySet, setKeySet]         = useState(hasApiKey);
 
   async function handleSave() {
     if (!apiKey.trim()) return;
@@ -59,19 +59,19 @@ export default function SettingsForm({ hasApiKey }: Props) {
   }
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/5 dark:shadow-none">
       <div className="mb-4 flex items-center gap-2">
-        <Key size={16} className="text-emerald-400" />
-        <h2 className="font-semibold text-white">TMDB API Key</h2>
+        <Key size={16} className="text-emerald-500 dark:text-emerald-400" />
+        <h2 className="font-semibold text-slate-900 dark:text-white">TMDB API Key</h2>
       </div>
 
-      <p className="mb-4 text-sm text-slate-400">
+      <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
         Klucz API z{" "}
         <a
           href="https://www.themoviedb.org/settings/api"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-emerald-300 hover:underline"
+          className="inline-flex items-center gap-1 text-emerald-600 hover:underline dark:text-emerald-300"
         >
           themoviedb.org <ExternalLink size={11} />
         </a>{" "}
@@ -80,20 +80,20 @@ export default function SettingsForm({ hasApiKey }: Props) {
       </p>
 
       {keySet && (
-        <div className="mb-4 flex items-center justify-between rounded-lg border border-emerald-400/20 bg-emerald-400/5 px-4 py-2.5 text-sm">
-          <span className="text-emerald-300">✓ Klucz API jest zapisany</span>
+        <div className="mb-4 flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm dark:border-emerald-400/20 dark:bg-emerald-400/5">
+          <span className="text-emerald-700 dark:text-emerald-300">✓ Klucz API jest zapisany</span>
           <div className="flex items-center gap-3">
             <button
               onClick={handleTest}
               disabled={testing}
-              className="flex items-center gap-1 text-xs text-slate-300 hover:text-white"
+              className="flex items-center gap-1 text-xs text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
             >
               {testing ? <Loader2 size={12} className="animate-spin" /> : null}
               Testuj połączenie
             </button>
             <button
               onClick={handleRemove}
-              className="text-xs text-red-400 hover:text-red-300"
+              className="text-xs text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300"
             >
               Usuń klucz
             </button>
@@ -102,12 +102,12 @@ export default function SettingsForm({ hasApiKey }: Props) {
       )}
 
       {testResult === "ok" && (
-        <div className="mb-4 flex items-center gap-2 rounded-lg border border-emerald-400/20 bg-emerald-400/5 px-4 py-2 text-sm text-emerald-300">
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/5 dark:text-emerald-300">
           <Check size={14} /> Połączenie działa poprawnie
         </div>
       )}
       {testResult === "error" && (
-        <div className="mb-4 flex items-center gap-2 rounded-lg border border-red-400/20 bg-red-400/5 px-4 py-2 text-sm text-red-300">
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600 dark:border-red-400/20 dark:bg-red-400/5 dark:text-red-300">
           <X size={14} /> Błąd — sprawdź klucz API
         </div>
       )}
@@ -118,7 +118,7 @@ export default function SettingsForm({ hasApiKey }: Props) {
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
           placeholder={keySet ? "Wklej nowy klucz aby zastąpić…" : "Wklej klucz API…"}
-          className="flex-1 rounded-xl border border-white/10 bg-slate-900 px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:border-emerald-400/50 focus:outline-none"
+          className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:border-emerald-400/50 focus:outline-none dark:border-white/10 dark:bg-slate-900 dark:text-white dark:placeholder-slate-500"
           onKeyDown={(e) => e.key === "Enter" && handleSave()}
         />
         <button

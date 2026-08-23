@@ -16,7 +16,6 @@ export default function ScraperPageClient({ scriptContent }: Props) {
     setIsElectron(!!(window as any).electronAPI);
   }, []);
 
-  // Zapobiega hydration mismatch — renderuj dopiero po wykryciu środowiska
   if (isElectron === null) {
     return (
       <div className="mx-auto max-w-2xl px-6 py-10">
@@ -25,10 +24,8 @@ export default function ScraperPageClient({ scriptContent }: Props) {
             <RefreshCw size={18} />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold text-white">Scraper Filmweb</h1>
-            <p className="text-sm text-slate-400">
-              Ładowanie...
-            </p>
+            <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Scraper Filmweb</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Ładowanie...</p>
           </div>
         </div>
       </div>
@@ -36,16 +33,15 @@ export default function ScraperPageClient({ scriptContent }: Props) {
   }
 
   if (isElectron) {
-    // Wersja Electron — natywny scraper z pełną automatyzacją
     return (
       <div className="mx-auto max-w-2xl px-6 py-10">
-        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-emerald-400/20 bg-emerald-400/5 p-5">
-          <Download size={18} className="mt-0.5 shrink-0 text-emerald-300" />
+        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-400/20 dark:bg-emerald-400/5">
+          <Download size={18} className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-300" />
           <div className="text-sm">
-            <div className="mb-1 font-medium text-emerald-300">
+            <div className="mb-1 font-medium text-emerald-700 dark:text-emerald-300">
               Wersja desktop — pełna automatyzacja
             </div>
-            <p className="text-emerald-400/80">
+            <p className="text-emerald-600 dark:text-emerald-400/80">
               Używasz natywnego scrapera CineBridge. Automatyczne logowanie,
               obsługa captcha, pobieranie ulubionych, list i bezpośredni import do bazy.
             </p>
@@ -57,8 +53,8 @@ export default function ScraperPageClient({ scriptContent }: Props) {
             <RefreshCw size={18} />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold text-white">Scraper Filmweb</h1>
-            <p className="text-sm text-slate-400">
+            <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Scraper Filmweb</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               Automatyczna synchronizacja z natywną integracją
             </p>
           </div>
@@ -69,6 +65,5 @@ export default function ScraperPageClient({ scriptContent }: Props) {
     );
   }
 
-  // Wersja Web — stary skrypt do konsoli
   return <ScraperClient scriptContent={scriptContent} />;
 }
