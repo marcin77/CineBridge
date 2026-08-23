@@ -69,3 +69,8 @@ temp/
 .cache/
 *.pem
 package.json.merge.md
+# Google verification
+docs/google*.html
+
+# Next.js auto-generated
+next-env.d.ts
