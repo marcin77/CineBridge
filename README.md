@@ -76,20 +76,6 @@ Oprócz wbudowanego scrapera, CineBridge obsługuje:
 
 ---
 
-## 🛠️ Stack technologiczny
-
-| Warstwa | Technologia |
-|---------|-------------|
-| **Desktop** | Electron 33+ |
-| **Frontend** | Next.js 15 (App Router), React 19 |
-| **Styling** | Tailwind CSS v4, next-themes |
-| **Database** | SQLite (better-sqlite3), Drizzle ORM |
-| **Language** | TypeScript |
-| **Scraper** | Native Electron BrowserWindow + Filmweb API |
-| **Build** | electron-builder (AppImage/DMG/EXE) |
-
----
-
 ## 📦 Instalacja i uruchomienie
 
 ### Dla użytkowników końcowych (binarka)
@@ -195,6 +181,20 @@ cinebridge/
 | `npm run db:generate` | Generuj migracje Drizzle z schema |
 | `npm run db:push` | Zastosuj migracje (dev mode) |
 ```
+
+## 🛠️ Stack technologiczny
+
+| Warstwa | Technologia |
+|---------|-------------|
+| **Desktop** | Electron 33+ |
+| **Frontend** | Next.js 15 (App Router), React 19 |
+| **Styling** | Tailwind CSS v4, next-themes |
+| **Database** | SQLite (better-sqlite3), Drizzle ORM |
+| **Language** | TypeScript |
+| **Scraper** | Native Electron BrowserWindow + Filmweb API |
+| **Build** | electron-builder (AppImage/DMG/EXE) |
+
+---
 
 ## 🔒 Bezpieczeństwo danych
 
