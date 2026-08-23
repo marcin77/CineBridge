@@ -1,0 +1,17 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Tło: zielony zaokrąglony kwadrat -->
+  <rect width="512" height="512" rx="115" fill="#34d399"/>
+  
+  <!-- Ikona Film (lucide-react), wyśrodkowana i przeskalowana -->
+  <g transform="translate(106, 106) scale(12.5)">
+    <path d="M18.5 2h-13A3.5 3.5 0 0 0 2 5.5v13A3.5 3.5 0 0 0 5.5 22h13a3.5 3.5 0 0 0 3.5-3.5v-13A3.5 3.5 0 0 0 18.5 2Z" 
+          fill="none" stroke="#052e1f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M7 2v20" stroke="#052e1f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M17 2v20" stroke="#052e1f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M2 12h20" stroke="#052e1f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M2 7h5" stroke="#052e1f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M2 17h5" stroke="#052e1f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M17 17h5" stroke="#052e1f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M17 7h5" stroke="#052e1f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

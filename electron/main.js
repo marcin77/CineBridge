@@ -99,14 +99,30 @@ function waitForDevServer(resolve, reject, attempts = 0) {
 }
 
 // ─── Okno aplikacji ───────────────────────────────────────────────────────────
+function getIconPath() {
+  if (app.isPackaged) {
+    // W spakowanej aplikacji ikona jest w extraResources lub obok pliku exe
+    return path.join(process.resourcesPath, "build", "icons", "512x512.png");
+  }
+  // W trybie dev - ścieżka względna od electron/main.js
+  return path.join(__dirname, "..", "build", "icons", "512x512.png");
+}
+
 function createWindow() {
+  const iconPath = getIconPath();
+  console.log("[Electron] Icon path:", iconPath);
+  console.log("[Electron] Icon exists:", fs.existsSync(iconPath));
+
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
     minWidth: 800,
     minHeight: 600,
     title: "CineBridge",
-    icon: path.join(__dirname, "..", "build", "icons", "icon.png"),
+    icon: iconPath,
+    ...(process.platform === "linux" && {
+    wmclass: "CineBridge",
+  }),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       nodeIntegration: false,
@@ -122,6 +138,16 @@ function createWindow() {
   mainWindow.once("ready-to-show", () => {
     mainWindow.show();
     mainWindow.focus();
+
+    // Jawne ustawienie ikony - wymagane na niektórych dystrybucjach Linux
+    if (fs.existsSync(iconPath)) {
+      const { nativeImage } = require("electron");
+      const icon = nativeImage.createFromPath(iconPath);
+      mainWindow.setIcon(icon);
+      console.log("[Electron] Icon set successfully:", iconPath);
+    } else {
+      console.warn("[Electron] Icon file not found:", iconPath);
+    }
   });
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -307,6 +333,12 @@ function setupCredentialsIpc() {
       return { success: false, error: e.message };
     }
   });
+}
+
+app.setName("CineBridge");
+
+if (process.platform === "linux") {
+  app.commandLine.appendSwitch("class", "CineBridge");
 }
 
 // ─── Lifecycle ────────────────────────────────────────────────────────────────

@@ -29,6 +29,8 @@ extraResources:
     filter:
       - "**/*.sql"
       - "meta/_journal.json"
+  - from: "build/icons/512x512.png"   # <- DODAJ TO
+    to: "build/icons/512x512.png"
 
 linux:
   target:
@@ -39,7 +41,13 @@ linux:
   icon: build/icons/
   synopsis: Migruj historię filmową z Filmweb
   description: Scraper Filmweb + eksport do Letterboxd, Trakt, Simkl
-
+  desktop:
+    Name: CineBridge
+    Comment: Migruj historię filmową z Filmweb do Letterboxd i Trakt
+    Categories: AudioVideo;Video;
+    StartupWMClass: CineBridge
+    StartupNotify: true
+    
 appImage:
   artifactName: CineBridge-${version}-${arch}.AppImage
 
