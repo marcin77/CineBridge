@@ -2,8 +2,10 @@
   "name": "cinebridge",
   "version": "1.2.0",
   "description": "Migruj historię filmową z Filmweb do Letterboxd, Trakt, Simkl i innych serwisów",
-  "author": "Marcin77",
-  "email": "moj@email.pl",
+  "author": {
+    "name": "Marcin77",
+    "email": "mwas@o2.pl"
+  },
   "private": true,
   "main": "electron/main.js",
   "scripts": {
