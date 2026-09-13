@@ -6,6 +6,11 @@ directories:
   output: dist
   buildResources: build
 
+publish:
+  provider: github
+  owner: marcin77
+  repo: CineBridge
+  
 files:
   - "electron/**/*"
   - "package.json"
@@ -29,12 +34,20 @@ extraResources:
     filter:
       - "**/*.sql"
       - "meta/_journal.json"
-  - from: "build/icons/512x512.png"   # <- DODAJ TO
-    to: "build/icons/512x512.png"
+  - from: "build/icons"
+    to: "build/icons"
+    filter:
+      - "*.png"
 
 linux:
   target:
     - target: AppImage
+      arch:
+        - x64
+    - target: deb
+      arch:
+        - x64
+    - target: rpm
       arch:
         - x64
   category: AudioVideo
@@ -47,9 +60,15 @@ linux:
     Categories: AudioVideo;Video;
     StartupWMClass: CineBridge
     StartupNotify: true
-    
+
 appImage:
   artifactName: CineBridge-${version}-${arch}.AppImage
+
+deb:
+  artifactName: CineBridge-${version}-${arch}.deb
+
+rpm:
+  artifactName: CineBridge-${version}-${arch}.rpm
 
 win:
   target:
@@ -58,6 +77,19 @@ win:
         - x64
   icon: build/icons/icon.ico
   artifactName: CineBridge-Setup-${version}.exe
+
+mac:
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+  category: public.app-category.video
+  icon: build/icons/icon.icns
+  hardenedRuntime: false
+
+dmg:
+  artifactName: CineBridge-${version}-${arch}.dmg
 
 nsis:
   oneClick: false

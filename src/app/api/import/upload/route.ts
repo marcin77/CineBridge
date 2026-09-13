@@ -64,6 +64,10 @@ export async function POST(req: Request) {
       listId:        item.listId ?? null,      // DODANE
       listStatus:    item.listStatus ?? null,  // DODANE
       favorite:      item.favorite ?? null,    // DODANE
+      parentShowId:  item.parentShowId ?? null,      // <- NOWE
+      seasonNumber:  item.seasonNumber ?? null,      // <- NOWE
+      episodeNumber: item.episodeNumber ?? null,     // <- NOWE
+      episodeTitle:  item.episodeTitle ?? null,      // <- NOWE
       matchStatus:   "ready" as const,
     }));
 

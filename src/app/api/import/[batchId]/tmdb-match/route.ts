@@ -1,12 +1,16 @@
 import { db } from "@/db";
-import { importBatches, mediaItems } from "@/db/schema";
-import { and, asc, count, eq, isNull, or } from "drizzle-orm";
+import { importBatches, mediaItems, traktMatchCache } from "@/db/schema";
+import { and, asc, count, eq, isNull, inArray } from "drizzle-orm";
 import { searchTmdb } from "@/lib/tmdb";
 import { getSetting } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
 const CHUNK = 20;
+
+function tmdbCacheKey(type: string, title: string, year: number | null): string {
+  return `tmdb:${type}:${title.toLowerCase()}:${year ?? ""}`;
+}
 
 export async function POST(
   _req: Request,
@@ -29,8 +33,6 @@ export async function POST(
     .where(eq(importBatches.id, id));
   if (!batch) return Response.json({ error: "Nie znaleziono importu." }, { status: 404 });
 
-  // Pobierz TYLKO pozycje bez OBU ID jednocześnie
-  // (jeśli ma choćby jedno z nich - pomijamy, Simkl sobie poradzi)
   const items = await db
     .select()
     .from(mediaItems)
@@ -39,8 +41,8 @@ export async function POST(
         eq(mediaItems.importBatchId, id),
         isNull(mediaItems.imdbId),
         isNull(mediaItems.tmdbId),
-        eq(mediaItems.tmdbSearched, false), // NOWE
-
+        eq(mediaItems.tmdbSearched, false),
+        inArray(mediaItems.type, ["movie", "show"]),
       ),
     )
     .orderBy(asc(mediaItems.id))
@@ -48,14 +50,60 @@ export async function POST(
 
   let matched = 0;
   let failed  = 0;
+  let fromCache = 0;
 
   for (const item of items) {
-    const searchTitle = item.originalTitle ?? item.title;
-    const result = await searchTmdb(
-      searchTitle,
-      item.year,
-      item.type as "movie" | "show",
-    );
+    // ↓ ZMIANA: klucz oparty na item.title (stabilny), nie na searchTitle
+    const cacheKey = tmdbCacheKey(item.type, item.title, item.year);
+
+    // ── Sprawdź cache przed odpytaniem TMDB API ──
+    const [cached] = await db
+      .select()
+      .from(traktMatchCache)
+      .where(eq(traktMatchCache.cacheKey, cacheKey))
+      .limit(1);
+
+    let result: Awaited<ReturnType<typeof searchTmdb>> = null;
+
+    if (cached) {
+      fromCache++;
+      if (cached.tmdbId) {
+        result = {
+          tmdbId: cached.tmdbId,
+          imdbId: cached.imdbId,
+          title: cached.matchedTitle ?? item.title,
+          originalTitle: cached.matchedTitle ?? item.title,
+          year: cached.matchedYear,
+          type: item.type as "movie" | "show",
+        };
+      }
+      // cached.tmdbId === null → wcześniej nie znaleziono, result zostaje null
+    } else {
+      // ↓ ZMIANA: przekazujemy oba tytuły — searchTmdb sam próbuje wszystkich strategii
+      result = await searchTmdb(
+        item.title,
+        item.year,
+        item.type as "movie" | "show",
+        item.originalTitle,
+      );
+      // ↑ ZMIANA
+
+      // Zapisz wynik (pozytywny lub negatywny) do cache — kolejne batche skorzystają
+      await db
+        .insert(traktMatchCache)
+        .values({
+          cacheKey,
+          type: item.type,
+          imdbId: result?.imdbId ?? null,
+          tmdbId: result?.tmdbId ?? null,
+          traktId: null,
+          matchedTitle: result?.originalTitle ?? null,
+          matchedYear: result?.year ?? null,
+          confidence: result ? 100 : 0,
+          score: null,
+        })
+        .onConflictDoNothing();
+    }
 
     if (result) {
       await db
@@ -65,24 +113,23 @@ export async function POST(
           imdbId:       result.imdbId ?? null,
           matchedTitle: result.originalTitle,
           matchedYear:  result.year ?? item.year,
-          tmdbSearched:  true, // NOWE
+          tmdbSearched: true,
           updatedAt:    new Date().toISOString(),
         })
         .where(eq(mediaItems.id, item.id));
       matched++;
     } else {
       await db
-          .update(mediaItems)
-          .set({
-            tmdbSearched: true, // NOWE — oznacz jako sprawdzone, nie znajdowane ponownie
-            updatedAt:    new Date().toISOString(),
-          })
-          .where(eq(mediaItems.id, item.id));
-        failed++;
-      }
+        .update(mediaItems)
+        .set({
+          tmdbSearched: true,
+          updatedAt:    new Date().toISOString(),
+        })
+        .where(eq(mediaItems.id, item.id));
+      failed++;
+    }
   }
 
-  // Remaining — tylko te których jeszcze nie sprawdzano
   const [{ value: remaining }] = await db
     .select({ value: count() })
     .from(mediaItems)
@@ -91,9 +138,10 @@ export async function POST(
         eq(mediaItems.importBatchId, id),
         isNull(mediaItems.imdbId),
         isNull(mediaItems.tmdbId),
-        eq(mediaItems.tmdbSearched, false), // NOWE
+        eq(mediaItems.tmdbSearched, false),
+        inArray(mediaItems.type, ["movie", "show"]),
       ),
     );
 
-  return Response.json({ matched, failed, remaining });
+  return Response.json({ matched, failed, remaining, fromCache });
 }

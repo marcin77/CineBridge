@@ -29,4 +29,41 @@ contextBridge.exposeInMainWorld("electronAPI", {
   saveCredentials:    (email, password) => ipcRenderer.invoke("credentials:save", { email, password }),
   loadCredentials:    ()                => ipcRenderer.invoke("credentials:load"),
   clearCredentials:   ()                => ipcRenderer.invoke("credentials:clear"),
+
+  // Auto-updater
+  checkForUpdates:    () => ipcRenderer.invoke("updater:check"),
+  downloadUpdate:     () => ipcRenderer.invoke("updater:download"),
+  installUpdate:      () => ipcRenderer.invoke("updater:install"),
+
+  onUpdaterChecking: (cb) => {
+    const listener = () => cb();
+    ipcRenderer.on("updater:checking", listener);
+    return () => ipcRenderer.removeListener("updater:checking", listener);
+  },
+  onUpdaterAvailable: (cb) => {
+    const listener = (_, data) => cb(data);
+    ipcRenderer.on("updater:available", listener);
+    return () => ipcRenderer.removeListener("updater:available", listener);
+  },
+  onUpdaterNotAvailable: (cb) => {
+    const listener = () => cb();
+    ipcRenderer.on("updater:not-available", listener);
+    return () => ipcRenderer.removeListener("updater:not-available", listener);
+  },
+  onUpdaterProgress: (cb) => {
+    const listener = (_, data) => cb(data);
+    ipcRenderer.on("updater:progress", listener);
+    return () => ipcRenderer.removeListener("updater:progress", listener);
+  },
+  onUpdaterDownloaded: (cb) => {
+    const listener = (_, data) => cb(data);
+    ipcRenderer.on("updater:downloaded", listener);
+    return () => ipcRenderer.removeListener("updater:downloaded", listener);
+  },
+  onUpdaterError: (cb) => {
+    const listener = (_, data) => cb(data);
+    ipcRenderer.on("updater:error", listener);
+    return () => ipcRenderer.removeListener("updater:error", listener);
+  },
+
 });

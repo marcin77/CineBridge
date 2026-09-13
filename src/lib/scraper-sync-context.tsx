@@ -34,6 +34,10 @@ interface ScraperSyncState {
   remember: boolean;
   setRemember: (v: boolean) => void;
   credsSaved: boolean;
+  // ↓ NOWE
+  includeEpisodes: boolean;
+  setIncludeEpisodes: (v: boolean) => void;
+  // ↑ NOWE
   running: boolean;
   logs: ProgressEvent[];
   lastEvent: ProgressEvent | null;
@@ -52,15 +56,16 @@ interface ScraperSyncState {
 const ScraperSyncContext = createContext<ScraperSyncState | null>(null);
 
 export function ScraperSyncProvider({ children }: { children: ReactNode }) {
-  // WAZNE: zaczynamy zawsze od false, tak samo jak SSR,
-  // zeby uniknac hydration mismatch. Aktualizujemy dopiero w useEffect
-  // (ktory nie wykonuje sie podczas SSR, tylko po zamontowaniu w przegladarce).
   const [isElectron, setIsElectron] = useState(false);
 
   const [email, setEmail]           = useState("");
   const [password, setPassword]     = useState("");
   const [remember, setRemember]     = useState(false);
   const [credsSaved, setCredsSaved] = useState(false);
+
+  // ↓ NOWE
+  const [includeEpisodes, setIncludeEpisodes] = useState(true);
+  // ↑ NOWE
 
   const [running, setRunning]       = useState(false);
   const [logs, setLogs]             = useState<ProgressEvent[]>([]);
@@ -95,7 +100,6 @@ export function ScraperSyncProvider({ children }: { children: ReactNode }) {
     api.onScraperProgress((event: ProgressEvent) => {
       addLog(event);
 
-      // Jesli to event z wynikiem uploadu, scal go z istniejacym stanem `done`
       if (event.phase === "upload" && event.uploadResult) {
         setDone((prev) => prev ? { ...prev, uploadResult: event.uploadResult } : prev);
       }
@@ -115,7 +119,6 @@ export function ScraperSyncProvider({ children }: { children: ReactNode }) {
     });
   }
 
-  // Wykrycie Electrona + inicjalizacja - dopiero po zamontowaniu w przegladarce
   useEffect(() => {
     const hasElectronApi = !!(window as any).electronAPI;
     setIsElectron(hasElectronApi);
@@ -163,7 +166,9 @@ export function ScraperSyncProvider({ children }: { children: ReactNode }) {
 
     attachListeners();
 
-    const res = await api.startScraping({ email, password });
+    // ↓ ZMIANA: dodano includeEpisodes
+    const res = await api.startScraping({ email, password, includeEpisodes });
+    // ↑ ZMIANA
     if (!res.success) {
       setRunning(false);
       setError(res.error);
@@ -183,12 +188,12 @@ export function ScraperSyncProvider({ children }: { children: ReactNode }) {
   }
 
   async function handleClearData() {
-  const api = (window as any).electronAPI;
-  const result = await api.clearScraperData();
-  if (result.success) {
-    await refreshStatus();
+    const api = (window as any).electronAPI;
+    const result = await api.clearScraperData();
+    if (result.success) {
+      await refreshStatus();
+    }
   }
-}
 
   const value: ScraperSyncState = {
     isElectron,
@@ -196,6 +201,9 @@ export function ScraperSyncProvider({ children }: { children: ReactNode }) {
     password, setPassword,
     remember, setRemember,
     credsSaved,
+    // ↓ NOWE
+    includeEpisodes, setIncludeEpisodes,
+    // ↑ NOWE
     running,
     logs,
     lastEvent,

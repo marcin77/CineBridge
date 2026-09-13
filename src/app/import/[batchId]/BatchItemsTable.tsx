@@ -22,6 +22,17 @@ const CATEGORY_LABEL: Record<string, string> = {
   favorite:  "Ulubione",
 };
 
+const TYPE_LABEL: Record<string, string> = {
+  movie: "Film", show: "Serial", season: "Sezon", episode: "Odcinek",
+};
+
+function epCode(item: MediaItem) {
+  const s = String(item.seasonNumber ?? 0).padStart(2, "0");
+  if (item.type === "season") return `S${s}`;
+  const e = String(item.episodeNumber ?? 0).padStart(2, "0");
+  return `S${s}E${e}`;
+}
+
 function ItemRow({ item }: { item: MediaItem }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -29,13 +40,18 @@ function ItemRow({ item }: { item: MediaItem }) {
     <>
       <tr className="border-t border-slate-100 hover:bg-slate-50 dark:border-white/5 dark:hover:bg-white/[0.02]">
         <td className="py-2.5 pl-4 pr-2 text-xs text-slate-400">
-          {item.type === "show" ? "Serial" : "Film"}
+          {TYPE_LABEL[item.type] ?? item.type}
         </td>
         <td className="py-2.5 pr-4">
           <div className="font-medium text-slate-900 leading-tight dark:text-white">
             {item.title}
           </div>
-          {item.originalTitle && item.originalTitle !== item.title && (
+          {(item.type === "season" || item.type === "episode") ? (
+            <div className="text-[11px] text-slate-400">
+              <span className="rounded bg-slate-100 px-1 font-mono text-slate-600 dark:bg-white/10 dark:text-slate-300">{epCode(item)}</span>
+              {item.episodeTitle && <> · {item.episodeTitle}</>}
+            </div>
+          ) : item.originalTitle && item.originalTitle !== item.title && (
             <div className="text-[11px] text-slate-400">{item.originalTitle}</div>
           )}
         </td>

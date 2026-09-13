@@ -1,3 +1,5 @@
-title,original_title,year,type,rating,date,comment,imdb_id,tmdb_id
-Incepcja,Inception,2010,movie,9,2015-03-12,Świetny film o snach,tt1375666,
-Breaking Bad,Breaking Bad,2008,show,10,2016-07-01,,tt0903747,
+type,title,original_title,year,director,filmweb_id,category,user_rating,rated_at,watched_at,comment,list_name,list_id,list_status,favorite,parent_show_id,season_number,episode_number,episode_title,imdb_id,tmdb_id
+movie,Incepcja,Inception,2010,Christopher Nolan,500891,watched,9,2015-03-12,2015-03-12,Świetny film o snach,,,,nie,,,,,tt1375666,27205
+show,Breaking Bad,Breaking Bad,2008,Vince Gilligan,430668,watched,10,2016-07-01,2016-07-01,,,,,tak,,,,,tt0903747,1396
+season,Breaking Bad,Breaking Bad,2008,Vince Gilligan,8600001234,watched,10,2016-07-01,2016-07-01,,,,,nie,430668,5,,,,
+episode,Breaking Bad,Breaking Bad,2008,Vince Gilligan,1234567,watched,10,2016-07-01,2016-07-01,,,,,nie,430668,5,14,Ozymandias,,

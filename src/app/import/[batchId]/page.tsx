@@ -1,11 +1,11 @@
 import { db } from "@/db";
 import { importBatches, mediaItems } from "@/db/schema";
-import { eq, count, asc, desc, and, or, isNotNull, ne, sql } from "drizzle-orm";
+import { eq, count, asc, desc, and, or, isNotNull, ne, sql, inArray } from "drizzle-orm";
 import { Heart, Folder } from "lucide-react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import DeleteBatchButton from "@/components/DeleteBatchButton";
-import { ArrowLeft, FileText, Star, MessageSquare, List } from "lucide-react";
+import { ArrowLeft, Clapperboard, FileText, List, MessageSquare, MonitorPlay, Star, Tv } from "lucide-react";
 import BatchExportPanel from "./BatchExportPanel";
 import BatchItemsTable from "./BatchItemsTable";
 
@@ -48,19 +48,25 @@ export default async function BatchDetailPage({ params, searchParams }: Props) {
 
   const totalPages = Math.ceil(total / perPage);
 
-  const [
-    [{ value: watchedCount }],
-    [{ value: watchlistCount }],
-    [{ value: favoriteCount }],
-    [{ value: commentedCount }],
-    [{ value: listsCount }],
-  ] = await Promise.all([
-    db.select({ value: count() }).from(mediaItems).where(and(eq(mediaItems.importBatchId, id), eq(mediaItems.category, "watched"))),
-    db.select({ value: count() }).from(mediaItems).where(and(eq(mediaItems.importBatchId, id), eq(mediaItems.category, "watchlist"))),
-    db.select({ value: count() }).from(mediaItems).where(and(eq(mediaItems.importBatchId, id), or(eq(mediaItems.category, "favorite"), eq(mediaItems.favorite, "tak")))),
-    db.select({ value: count() }).from(mediaItems).where(and(eq(mediaItems.importBatchId, id), isNotNull(mediaItems.comment), ne(mediaItems.comment, ""))),
-    db.select({ value: sql<number>`count(distinct ${mediaItems.listId})` }).from(mediaItems).where(and(eq(mediaItems.importBatchId, id), isNotNull(mediaItems.listId), ne(mediaItems.listId, ""))),
-  ]);
+const [
+  [{ value: watchedCount }],
+  [{ value: watchlistCount }],
+  [{ value: showsCount }],      // ← NOWE
+  [{ value: favoriteCount }],
+  [{ value: commentedCount }],
+  [{ value: listsCount }],
+  [{ value: seasonsCount }],
+  [{ value: episodesCount }],
+] = await Promise.all([
+  db.select({ value: count() }).from(mediaItems).where(and(eq(mediaItems.importBatchId, id), eq(mediaItems.category, "watched"), inArray(mediaItems.type, ["movie", "show"]))),
+  db.select({ value: count() }).from(mediaItems).where(and(eq(mediaItems.importBatchId, id), eq(mediaItems.category, "watchlist"))),
+  db.select({ value: count() }).from(mediaItems).where(and(eq(mediaItems.importBatchId, id), eq(mediaItems.type, "show"))),
+  db.select({ value: count() }).from(mediaItems).where(and(eq(mediaItems.importBatchId, id), or(eq(mediaItems.category, "favorite"), eq(mediaItems.favorite, "tak")))),
+  db.select({ value: count() }).from(mediaItems).where(and(eq(mediaItems.importBatchId, id), isNotNull(mediaItems.comment), ne(mediaItems.comment, ""))),
+  db.select({ value: sql<number>`count(distinct ${mediaItems.listId})` }).from(mediaItems).where(and(eq(mediaItems.importBatchId, id), isNotNull(mediaItems.listId), ne(mediaItems.listId, ""))),
+  db.select({ value: count() }).from(mediaItems).where(and(eq(mediaItems.importBatchId, id), eq(mediaItems.type, "season"))),
+  db.select({ value: count() }).from(mediaItems).where(and(eq(mediaItems.importBatchId, id), eq(mediaItems.type, "episode"))),
+]);
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-10">
@@ -82,23 +88,26 @@ export default async function BatchDetailPage({ params, searchParams }: Props) {
         <DeleteBatchButton batchId={id} filename={batch.filename} redirectTo="/import" />
       </div>
 
-      <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-5">
-        {[
-          { icon: Star,          label: "Obejrzane",     value: watchedCount,   color: "from-sky-400 to-blue-500" },
-          { icon: List,          label: "Chce zobaczyć", value: watchlistCount, color: "from-amber-400 to-orange-500" },
-          { icon: Heart,         label: "Ulubione",      value: favoriteCount,  color: "from-red-400 to-pink-500" },
-          { icon: MessageSquare, label: "Z komentarzem", value: commentedCount, color: "from-emerald-400 to-teal-500" },
-          { icon: Folder,        label: "Listy",         value: listsCount,     color: "from-purple-400 to-violet-500" },
-        ].map(({ icon: Icon, label, value, color }) => (
-          <div key={label} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-white/5 dark:shadow-none">
-            <div className={`mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br ${color} text-slate-950`}>
-              <Icon size={15} />
-            </div>
-            <div className="text-lg font-semibold text-slate-900 dark:text-white">{value}</div>
-            <div className="text-xs text-slate-500 dark:text-slate-400">{label}</div>
-          </div>
-        ))}
+      <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
+  {[
+    { icon: Star,          label: "Obejrzane",     value: watchedCount,   color: "from-sky-400 to-blue-500" },
+    { icon: List,          label: "Chce zobaczyć", value: watchlistCount, color: "from-amber-400 to-orange-500" },
+    { icon: MonitorPlay,   label: "Seriale",       value: showsCount,     color: "from-violet-400 to-purple-500" },
+    { icon: Tv,            label: "Sezony",        value: seasonsCount,   color: "from-indigo-400 to-blue-500" },
+    { icon: Clapperboard,  label: "Odcinki",       value: episodesCount,  color: "from-cyan-400 to-sky-500" },
+    { icon: Heart,         label: "Ulubione",      value: favoriteCount,  color: "from-red-400 to-pink-500" },
+    { icon: MessageSquare, label: "Z komentarzem", value: commentedCount, color: "from-emerald-400 to-teal-500" },
+    { icon: Folder,        label: "Listy",         value: listsCount,     color: "from-purple-400 to-violet-500" },
+  ].map(({ icon: Icon, label, value, color }) => (
+    <div key={label} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-white/5 dark:shadow-none">
+      <div className={`mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br ${color} text-slate-950`}>
+        <Icon size={15} />
       </div>
+      <div className="text-lg font-semibold text-slate-900 dark:text-white">{value}</div>
+      <div className="text-xs text-slate-500 dark:text-slate-400">{label}</div>
+    </div>
+  ))}
+</div>
 
       <BatchExportPanel batchId={id} filename={batch.filename} />
 

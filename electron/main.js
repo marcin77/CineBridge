@@ -3,6 +3,8 @@ const { fork } = require("child_process");
 const path = require("path");
 const http = require("http");
 const fs = require("fs");
+const { autoUpdater } = require("electron-updater");
+
 
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
@@ -32,6 +34,117 @@ function getAppDir() {
 
 function getScraperDataDir() {
   return path.join(app.getPath("userData"), "scraper");
+}
+
+// ─── Integracja AppImage z Linux desktop ─────────────────────────────────────
+function setupLinuxAppImageIntegration() {
+  // Tylko Linux + prawdziwy AppImage.
+  // Nie uruchamia się dla dev, DEB ani RPM.
+  if (process.platform !== "linux" || !process.env.APPIMAGE) {
+    return;
+  }
+
+  try {
+    const appImagePath = process.env.APPIMAGE;
+    const homeDir = app.getPath("home");
+
+    const applicationsDir = path.join(
+      homeDir,
+      ".local",
+      "share",
+      "applications"
+    );
+
+    const iconBaseDir = path.join(
+      homeDir,
+      ".local",
+      "share",
+      "icons",
+      "hicolor"
+    );
+
+    const desktopPath = path.join(
+      applicationsDir,
+      "cinebridge.desktop"
+    );
+
+    fs.mkdirSync(applicationsDir, { recursive: true });
+
+    // Instalujemy wszystkie dostępne rozmiary ikon.
+    const iconSizes = [
+      "16x16",
+      "32x32",
+      "48x48",
+      "64x64",
+      "128x128",
+      "256x256",
+      "512x512",
+    ];
+
+    for (const size of iconSizes) {
+      const source = app.isPackaged
+        ? path.join(process.resourcesPath, "build", "icons", `${size}.png`)
+        : path.join(__dirname, "..", "build", "icons", `${size}.png`);
+
+      const destinationDir = path.join(
+        iconBaseDir,
+        size,
+        "apps"
+      );
+
+      const destination = path.join(
+        destinationDir,
+        "cinebridge.png"
+      );
+
+      if (!fs.existsSync(source)) {
+        console.warn("[Desktop] Brak ikony:", source);
+        continue;
+      }
+
+      fs.mkdirSync(destinationDir, { recursive: true });
+      fs.copyFileSync(source, destination);
+    }
+
+    // Ścieżka AppImage może zawierać spacje.
+    // Escapujemy znaki wymagające ochrony w Exec.
+    const escapedAppImagePath = appImagePath
+      .replace(/\\/g, "\\\\")
+      .replace(/"/g, '\\"')
+      .replace(/`/g, "\\`")
+      .replace(/\$/g, "\\$");
+
+    const desktopEntry = `[Desktop Entry]
+Version=1.0
+Type=Application
+Name=CineBridge
+Comment=Migruj historię filmową z Filmweb do Letterboxd i Trakt
+Exec="${escapedAppImagePath}" %U
+Icon=cinebridge
+Terminal=false
+Categories=AudioVideo;Video;
+StartupWMClass=CineBridge
+StartupNotify=true
+`;
+
+    fs.writeFileSync(desktopPath, desktopEntry, {
+      encoding: "utf8",
+      mode: 0o755,
+    });
+
+    // Jeżeli plik już istniał, mode z writeFileSync nie musi go zmienić.
+    fs.chmodSync(desktopPath, 0o755);
+
+    console.log("[Desktop] Integracja AppImage gotowa.");
+    console.log("[Desktop] AppImage:", appImagePath);
+    console.log("[Desktop] Launcher:", desktopPath);
+  } catch (err) {
+    // Problem z integracją pulpitu nie może uniemożliwić startu CineBridge.
+    console.error(
+      "[Desktop] Nie udało się zintegrować AppImage:",
+      err
+    );
+  }
 }
 
 // ─── Next.js server ───────────────────────────────────────────────────────────
@@ -213,7 +326,7 @@ function setupScraperIpc() {
   }
 
   ipcMain.handle("scraper:start", async (event, credentials) => {
-    const { email, password } = credentials || {};
+    const { email, password, includeEpisodes } = credentials || {};
     if (!email || !password) {
       return { success: false, error: "Brak emaila lub hasla" };
     }
@@ -225,6 +338,7 @@ function setupScraperIpc() {
           password,
           mainWindow,
           dataDir: getScraperDataDir(),
+          includeEpisodes: includeEpisodes !== false,   // <- NOWE
         });
         // Auto-upload CSV do Next.js po zakonczeniu
         if (result?.csvContent && result?.csvPath) {
@@ -335,6 +449,82 @@ function setupCredentialsIpc() {
   });
 }
 
+// ─── IPC: Auto-updater ────────────────────────────────────────────────────────
+function setupUpdaterIpc() {
+  // Nie pobieraj automatycznie — czekaj na jawną zgodę użytkownika
+  autoUpdater.autoDownload = false;
+  autoUpdater.autoInstallOnAppQuit = false;
+
+  function sendToRenderer(channel, data) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send(channel, data);
+    }
+  }
+
+  autoUpdater.on("checking-for-update", () => {
+    sendToRenderer("updater:checking");
+  });
+
+  autoUpdater.on("update-available", (info) => {
+    sendToRenderer("updater:available", {
+      version: info.version,
+      releaseDate: info.releaseDate,
+      releaseNotes: info.releaseNotes,
+    });
+  });
+
+  autoUpdater.on("update-not-available", () => {
+    sendToRenderer("updater:not-available");
+  });
+
+  autoUpdater.on("download-progress", (progress) => {
+    sendToRenderer("updater:progress", {
+      percent: Math.round(progress.percent),
+      transferred: progress.transferred,
+      total: progress.total,
+      bytesPerSecond: progress.bytesPerSecond,
+    });
+  });
+
+  autoUpdater.on("update-downloaded", (info) => {
+    sendToRenderer("updater:downloaded", { version: info.version });
+  });
+
+  autoUpdater.on("error", (err) => {
+    console.error("[Updater] Blad:", err.message);
+    sendToRenderer("updater:error", { message: err.message });
+  });
+
+  // Renderer wywołuje to ręcznie (np. przy starcie aplikacji, w tle)
+  ipcMain.handle("updater:check", async () => {
+    if (!app.isPackaged) {
+      return { success: false, error: "Auto-update dostępny tylko w spakowanej aplikacji" };
+    }
+    try {
+      await autoUpdater.checkForUpdates();
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  });
+
+  // Użytkownik klika "Pobierz aktualizację"
+  ipcMain.handle("updater:download", async () => {
+    try {
+      await autoUpdater.downloadUpdate();
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  });
+
+  // Użytkownik klika "Zainstaluj i uruchom ponownie"
+  ipcMain.handle("updater:install", async () => {
+    autoUpdater.quitAndInstall(false, true);
+    return { success: true };
+  });
+}
+
 app.setName("CineBridge");
 
 if (process.platform === "linux") {
@@ -346,6 +536,9 @@ app.whenReady().then(async () => {
   try {
     setupScraperIpc();
     setupCredentialsIpc();
+    setupUpdaterIpc();
+
+    setupLinuxAppImageIntegration();
 
     if (app.isPackaged) {
       console.log("[Electron] Tryb produkcyjny - startuje forkowany serwer Next.js...");

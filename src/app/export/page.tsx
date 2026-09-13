@@ -24,11 +24,11 @@ export default async function ExportPage() {
       {/* Format cards */}
       <section className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          { name: "Letterboxd", desc: "Plik CSV gotowy do importu na letterboxd.com. Obsługuje tylko filmy. Oceny 0.5–5★, daty i recenzje.", format: "letterboxd", color: "from-orange-400 to-amber-500", url: "https://letterboxd.com/import/" },
-          { name: "Trakt",      desc: "Format CSV dla trakt.tv. Uwaga: Trakt ograniczył API do 1 app/konto.", format: "trakt", color: "from-red-400 to-pink-500", url: "https://trakt.tv/settings" },
-          { name: "Simkl",     desc: "Format CSV dla simkl.com. Obsługuje oceny (1-10), status watchlisty i daty.", format: "simkl", color: "from-blue-400 to-indigo-500", url: "https://simkl.com/apps/import/csv/" },
-          { name: "Universalny", desc: "Pełny eksport ze wszystkimi polami. Idealne do archiwizacji.", format: "universal", color: "from-emerald-400 to-teal-500", url: null },
-        ].map(({ name, desc, format, color, url }) => (
+          { name: "Trakt ZIP", desc: "Archiwum w formacie eksportu Trakt (JSON): filmy, seriale, sezony i odcinki z ocenami, obejrzane, watchlista, listy. Wgraj wszędzie, gdzie akceptowany jest backup Trakt.", format: "trakt-zip", color: "from-red-400 to-pink-500", url: "https://trakt.tv/settings/data" },
+          { name: "Letterboxd", desc: "ZIP z CSV gotowymi do importu na letterboxd.com. Tylko filmy. Oceny 0.5–5★, daty i recenzje.", format: "letterboxd", color: "from-orange-400 to-amber-500", url: "https://letterboxd.com/import/" },
+          { name: "Simkl", desc: "CSV dla simkl.com. Oceny (1–10), status watchlisty i daty. Filmy i seriale.", format: "simkl", color: "from-blue-400 to-indigo-500", url: "https://simkl.com/apps/import/csv/" },
+          { name: "Uniwersalny", desc: "Pełny zrzut wszystkich pól (w tym sezony/odcinki, listy, ID). Backup i dalsze przetwarzanie — do importu w serwisach użyj Trakt ZIP.", format: "universal", color: "from-emerald-400 to-teal-500", url: null },
+          ].map(({ name, desc, format, color, url }) => (
           <div key={format} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/5 dark:shadow-none">
             <div className={`mb-3 h-1.5 w-12 rounded-full bg-gradient-to-r ${color}`} />
             <div className="mb-1 font-semibold text-slate-900 dark:text-white">{name}</div>
@@ -68,13 +68,17 @@ export default async function ExportPage() {
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    {(["letterboxd", "universal", "trakt", "simkl"] as const).map((fmt) => (
-                      <a key={fmt}
-                        href={fmt === "letterboxd" ? `/api/import/${b.id}/export/letterboxd-zip` : `/api/import/${b.id}/export?format=${fmt}`}
-                        className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 dark:border-white/10 dark:bg-transparent dark:text-slate-300 dark:hover:bg-white/5 dark:hover:text-white"
-                      >
+                    {([
+                      { fmt: "trakt-zip",  label: "Trakt ZIP",      href: `/api/import/${b.id}/export/trakt-zip` },
+                      { fmt: "letterboxd", label: "Letterboxd ZIP", href: `/api/import/${b.id}/export/letterboxd-zip` },
+                      { fmt: "simkl",      label: "Simkl",          href: `/api/import/${b.id}/export?format=simkl` },
+                      { fmt: "universal",  label: "Uniwersalny",    href: `/api/import/${b.id}/export?format=universal` },
+                      { fmt: "trakt",      label: "Trakt CSV",      href: `/api/import/${b.id}/export?format=trakt` },
+                    ]).map(({ fmt, label, href }) => (
+                      <a key={fmt} href={href}
+                        className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 dark:border-white/10 dark:bg-transparent dark:text-slate-300 dark:hover:bg-white/5 dark:hover:text-white">
                         <Download size={12} />
-                        {fmt === "letterboxd" ? "Letterboxd ZIP" : fmt === "trakt" ? "Trakt" : fmt === "simkl" ? "Simkl" : "Universal"}
+                        {label}
                       </a>
                     ))}
                     <Link href={`/import/${b.id}`} className="flex items-center gap-1 text-xs text-emerald-600 hover:underline dark:text-emerald-300">
@@ -92,9 +96,10 @@ export default async function ExportPage() {
       <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/5 dark:shadow-none">
         <h2 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">Wskazówki importu</h2>
         <ul className="space-y-2 text-xs text-slate-500 dark:text-slate-400">
+          <li><strong className="text-slate-700 dark:text-slate-300">Trakt ZIP:</strong> Rozpakuj i wgraj pliki JSON przez trakt.tv → Settings → Data → Import, albo wgraj cały ZIP w serwisach obsługujących „Import z Trakt” (np. bingebase.com/imports). Dopasowanie po IMDb/TMDB ID — uruchom najpierw „Uzupełnij ID przez TMDB”.</li>
           <li><strong className="text-slate-700 dark:text-slate-300">Letterboxd:</strong> Zaloguj się → Ustawienia → Import &amp; Export → Import z pliku CSV.</li>
           <li><strong className="text-slate-700 dark:text-slate-300">Trakt:</strong> Od 2026r. Trakt ograniczył API. Importuj ręcznie przez trakt.tv → Ustawienia.</li>
-          <li><strong className="text-slate-700 dark:text-slate-300">Komentarze:</strong> CineBridge eksportuje komentarze jako pole „Review" (Letterboxd) lub „comment" (Trakt/Universal).</li>
+          <li><strong className="text-slate-700 dark:text-slate-300">Komentarze:</strong> CineBridge eksportuje komentarze jako pole „Review&quot; (Letterboxd) lub „comment&quot; (Trakt/Universal).</li>
           <li><strong className="text-slate-700 dark:text-slate-300">Simkl:</strong> Wejdź na simkl.com/apps/import/csv/ → wybierz plik → Upload and start import.</li>
         </ul>
       </section>

@@ -30,7 +30,8 @@ function loadDb(dataDir) {
   } catch (e) {
     console.error("[runner] Blad wczytywania bazy:", e.message);
   }
-  return { itemsMap: {}, listMeta: {}, lastSync: null };
+  return { itemsMap: {}, listMeta: {}, showScanMeta: {}, lastSync: null };
+
 }
 
 function saveDb(db, dataDir) {
@@ -82,7 +83,7 @@ function clearData(dataDir) {
   }
 }
 
-async function runScraper({ email, password, mainWindow, dataDir }) {
+async function runScraper({ email, password, mainWindow, dataDir, includeEpisodes = true }) {
   _abortController = new AbortController();
   _isRunning = true;
   _lastProgress = null;
@@ -128,6 +129,7 @@ async function runScraper({ email, password, mainWindow, dataDir }) {
     });
 
     db = loadDb(dataDir);
+    if (!db.showScanMeta) db.showScanMeta = {};
     const itemCount = Object.keys(db.itemsMap).length;
 
     sendProgress({
@@ -167,6 +169,7 @@ async function runScraper({ email, password, mainWindow, dataDir }) {
       signal: _abortController.signal,
       onCheckpoint: checkpoint,
       checkpointEvery: 50, // zapisuj co 50 przetworzonych pozycji
+      includeEpisodes,                       // <- NOWE
     });
 
     const stats = await scraper.sync();

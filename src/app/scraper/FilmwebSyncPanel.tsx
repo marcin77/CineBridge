@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Play, Square, RefreshCw, Eye, EyeOff, CheckCircle, XCircle, Loader2, Clock, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import { Play, Square, Eye, EyeOff, CheckCircle, XCircle, Loader2, Clock, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import { useScraperSync } from "@/lib/scraper-sync-context";
 
 export default function FilmwebSyncPanel() {
@@ -9,7 +9,7 @@ export default function FilmwebSyncPanel() {
     isElectron, email, setEmail, password, setPassword, remember, setRemember,
     credsSaved, running, logs, lastEvent, status, done, error,
     showLogs, setShowLogs, handleStart, handleStop, handleClearCredentials,
-    refreshStatus, handleClearData,
+    refreshStatus, handleClearData, includeEpisodes, setIncludeEpisodes,
   } = useScraperSync();
 
   const [showPass, setShowPass] = useState(false);
@@ -34,6 +34,7 @@ export default function FilmwebSyncPanel() {
     "watchlist-filmy": "Watchlist (filmy)…", "watchlist-seriale": "Watchlist (seriale)…",
     listy: "Synchronizacja list…", done: "Zakończono", upload: "Importowanie do bazy…",
     error: "Błąd", stopped: "Zatrzymano",
+    odcinki: "Oceny sezonów i odcinków…",
   };
 
   if (!isElectron) {
@@ -83,16 +84,47 @@ export default function FilmwebSyncPanel() {
               </button>
             </div>
           </div>
-          <div className="flex items-center justify-between">
-            <label className="flex items-center gap-2 text-xs text-slate-500 cursor-pointer dark:text-slate-400">
-              <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} disabled={running} className="rounded" />
-              Zapamiętaj dane logowania (zaszyfrowane)
+          <div className="space-y-3">
+            {/* Zapamiętaj + przycisk usuń */}
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 text-xs text-slate-500 cursor-pointer dark:text-slate-400">
+                <input
+                  type="checkbox"
+                  checked={remember}
+                  onChange={(e) => setRemember(e.target.checked)}
+                  disabled={running}
+                  className="rounded"
+                />
+                Zapamiętaj dane logowania (zaszyfrowane)
+              </label>
+              {credsSaved && (
+                <button
+                  onClick={handleClearCredentials}
+                  className="text-xs text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300"
+                >
+                  Usuń zapisane dane
+                </button>
+              )}
+            </div>
+
+            {/* Pobieraj odcinki */}
+            <label className="flex items-start gap-2 text-xs text-slate-500 cursor-pointer dark:text-slate-400">
+              <input
+                type="checkbox"
+                checked={includeEpisodes}
+                onChange={(e) => setIncludeEpisodes(e.target.checked)}
+                disabled={running}
+                className="mt-0.5 rounded"
+              />
+              <span>
+                Pobieraj oceny sezonów i odcinków
+                <span className="block text-[11px] text-slate-400 dark:text-slate-500">
+                  Filmweb nie ma zbiorczej listy — każdy odcinek jest sprawdzany osobno.
+                  Skanowane są tylko seriale, których ocena zmieniła się od ostatniej synchronizacji.
+                  Pierwszy raz może potrwać dłużej.
+                </span>
+              </span>
             </label>
-            {credsSaved && (
-              <button onClick={handleClearCredentials} className="text-xs text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300">
-                Usuń zapisane dane
-              </button>
-            )}
           </div>
         </div>
       </div>
@@ -112,11 +144,6 @@ export default function FilmwebSyncPanel() {
             Zatrzymaj
           </button>
         )}
-        <button onClick={refreshStatus}
-          className="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5">
-          <RefreshCw size={14} />
-          Odśwież
-        </button>
         <button onClick={onClearData} disabled={running || clearingData}
           className="flex items-center gap-2 rounded-xl border border-red-200 px-4 py-3 text-sm text-red-600 transition hover:bg-red-50 disabled:opacity-50 dark:border-red-400/20 dark:text-red-400 dark:hover:bg-red-400/5"
           title="Wyczyść lokalną bazę danych scrapera">
@@ -162,7 +189,10 @@ export default function FilmwebSyncPanel() {
               { label: "Seriale dodane",  value: (done as any).stats?.showsAdded },
               { label: "Watchlist +",     value: (done as any).stats?.watchlistAdded },
               { label: "Listy pozycji +", value: (done as any).stats?.listsAdded },
-            ].map(({ label, value }) => value !== undefined && (
+              { label: "Sezony ocenione",  value: (done as any).stats?.seasonsAdded },
+              { label: "Odcinki ocenione", value: (done as any).stats?.episodesAdded },
+              { label: "Seriale przeskanowane", value: (done as any).stats?.showsScanned },
+            ].map(({ label, value }) => typeof value === "number" && (
               <div key={label} className="rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-white/10 dark:bg-white/5">
                 <div className="text-lg font-semibold text-slate-900 dark:text-white">{value}</div>
                 <div className="text-xs text-slate-500 dark:text-slate-400">{label}</div>

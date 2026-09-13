@@ -29,6 +29,13 @@
       "when": 1787071016498,
       "tag": "0003_easy_doctor_doom",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1788619172147,
+      "tag": "0004_curved_pride",
+      "breakpoints": true
     }
   ]
 }

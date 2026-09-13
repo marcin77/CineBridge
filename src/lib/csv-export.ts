@@ -1,4 +1,5 @@
 import type { mediaItems } from "@/db/schema";
+const isTitle = (i: MediaItem) => i.type === "movie" || i.type === "show";
 
 type MediaItem = typeof mediaItems.$inferSelect;
 
@@ -56,7 +57,7 @@ function toLetterboxdRow(item: MediaItem): string {
     : "";
 
   return [
-    item.originalTitle ? cleanTitle(item.originalTitle) : cleanTitle(item.matchedTitle ?? item.title),
+    cleanTitle(item.matchedTitle ?? item.originalTitle ?? item.title),
     item.matchedYear  ?? item.year ?? "",
     directors, // <- nowa kolumna
     formatDate(item.watchedAt ?? item.ratedAt, true),
@@ -108,7 +109,7 @@ if (watchlist.length > 0) {
       ? item.director.split(";").map((d) => d.trim()).join(", ")
       : "";
     return [
-      cleanTitle(item.originalTitle ?? item.matchedTitle ?? item.title),
+      cleanTitle(item.matchedTitle ?? item.originalTitle ?? item.title),
       item.matchedYear ?? item.year ?? "",
       directors,
     ]
@@ -146,7 +147,7 @@ for (const [listName, listMovies] of listMap.entries()) {
       ? item.director.split(";").map((d) => d.trim()).join(", ")
       : "";
     return [
-      cleanTitle(item.originalTitle ?? item.matchedTitle ?? item.title),
+      cleanTitle(item.matchedTitle ?? item.originalTitle ?? item.title),
       item.matchedYear ?? item.year ?? "",
       directors,
     ]
@@ -164,41 +165,38 @@ for (const [listName, listMovies] of listMap.entries()) {
 }
 
 // ─── Universal / CineBridge format ───────────────────────────────────────────
-// Full fidelity – all fields preserved
 const UNIVERSAL_HEADER = [
-  "type",
-  "title",
-  "original_title",
-  "year",
-  "filmweb_id",
-  "imdb_id",
-  "tmdb_id",
-  "category",
-  "user_rating",
-  "rated_at",
-  "watched_at",
-  "comment",
-  "list_name",
+  "type", "title", "original_title", "year", "director",
+  "filmweb_id", "imdb_id", "tmdb_id",
+  "category", "user_rating", "rated_at", "watched_at", "comment",
+  "list_name", "list_id", "list_status", "favorite",
+  "parent_show_id", "season_number", "episode_number", "episode_title",
 ];
 
 function toUniversalRow(item: MediaItem): string {
   return [
     item.type,
-    cleanTitle(item.originalTitle ?? item.matchedTitle ?? item.title),
+    cleanTitle(item.title),
     item.originalTitle ?? "",
-    item.matchedYear  ?? item.year ?? "",
-    item.sourceId     ?? "",
-    item.imdbId       ?? "",
-    item.tmdbId       ?? "",
+    item.matchedYear ?? item.year ?? "",
+    item.director ?? "",
+    item.sourceId ?? "",
+    item.imdbId ?? "",
+    item.tmdbId ?? "",
     item.category,
-    item.userRating   ?? "",
-    formatDate(item.ratedAt,   true),
+    item.userRating ?? "",
+    formatDate(item.ratedAt, true),
     formatDate(item.watchedAt, true),
-    item.comment      ?? "",
-    item.listName     ?? "",
-  ]
-    .map(csvEscape)
-    .join(",");
+    item.comment ?? "",
+    item.listName ?? "",
+    item.listId ?? "",
+    item.listStatus ?? "",
+    item.favorite ?? "",
+    item.parentShowId ?? "",
+    item.seasonNumber ?? "",
+    item.episodeNumber ?? "",
+    item.episodeTitle ?? "",
+  ].map(csvEscape).join(",");
 }
 
 function cleanTitle(title: string | null | undefined): string {
@@ -231,7 +229,7 @@ const TRAKT_HEADER = [
 function toTraktRow(item: MediaItem): string {
   return [
     item.type,
-    cleanTitle(item.originalTitle ?? item.matchedTitle ?? item.title),
+    cleanTitle(item.matchedTitle ?? item.originalTitle ?? item.title),
     item.matchedYear  ?? item.year ?? "",
     item.imdbId       ?? "",
     item.tmdbId       ?? "",
@@ -247,8 +245,13 @@ function toTraktRow(item: MediaItem): string {
 }
 
 export function buildTraktCsv(items: MediaItem[]): string {
-  const rows = items.map(toTraktRow);
+  const rows = items.filter(isTitle).map(toTraktRow);
   return [TRAKT_HEADER.join(","), ...rows].join("\n");
+}
+
+export function buildSimklCsv(items: MediaItem[]): string {
+  const rows = items.filter(isTitle).map(toSimklRow).filter((r): r is string => r !== null);
+  return [SIMKL_HEADER.join(","), ...rows].join("\n");
 }
 
 // ─── Simkl format ─────────────────────────────────────────────────────────────
@@ -284,7 +287,7 @@ function toSimklRow(item: MediaItem): string | null {
     simklType(item),
     item.imdbId ?? "",
     item.tmdbId ?? "",
-    cleanTitle(item.originalTitle ?? item.matchedTitle ?? item.title),
+    cleanTitle(item.matchedTitle ?? item.originalTitle ?? item.title),
     item.matchedYear ?? item.year ?? "",
     status,
     formatSimklDate(item.watchedAt ?? item.ratedAt),
@@ -293,13 +296,6 @@ function toSimklRow(item: MediaItem): string | null {
   ]
     .map(csvEscape)
     .join(",");
-}
-
-export function buildSimklCsv(items: MediaItem[]): string {
-  const rows = items
-    .map(toSimklRow)
-    .filter((row): row is string => row !== null);
-  return [SIMKL_HEADER.join(","), ...rows].join("\n");
 }
 
 // ─── Dispatcher ──────────────────────────────────────────────────────────────

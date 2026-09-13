@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build-linux:
-    name: 🐧 Build AppImage
+    name: 🐧 Build Linux (AppImage/deb/rpm)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,16 +21,19 @@ jobs:
       - name: Install Linux system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential python3 libfuse2
+          sudo apt-get install -y build-essential python3 libfuse2 rpm
       - run: npm ci
-      - name: Build AppImage
-        run: npm run build:linux
+      - name: Build Linux packages
+        run: npm run build:linux:all
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v4
         with:
           name: linux-build
-          path: dist/*.AppImage
+          path: |
+            dist/*.AppImage
+            dist/*.deb
+            dist/*.rpm
 
   build-windows:
     name: 🪟 Build Windows Installer
@@ -55,9 +58,28 @@ jobs:
           name: windows-build
           path: dist/*.exe
 
+  build-macos:
+    name: 🍎 Build macOS DMG
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - run: npm ci
+      - name: Build macOS DMG
+        run: npm run build:mac
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-build
+          path: dist/*.dmg
+
   release:
     name: 📦 Create GitHub Release
-    needs: [ build-linux, build-windows ]
+    needs: [ build-linux, build-windows, build-macos ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -68,6 +90,10 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: windows-build
+          path: release/
+      - uses: actions/download-artifact@v4
+        with:
+          name: macos-build
           path: release/
       - id: version
         run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
@@ -109,8 +135,11 @@ jobs:
 
             | System | Plik | Instalacja |
             |--------|------|------------|
-            | 🐧 Linux | `CineBridge-*-x86_64.AppImage` | `chmod +x *.AppImage && ./CineBridge-*.AppImage` |
+            | 🐧 Linux (AppImage) | `CineBridge-*-x86_64.AppImage` | `chmod +x *.AppImage && ./CineBridge-*.AppImage` |
+            | 🐧 Linux (Debian/Ubuntu) | `CineBridge-*-x86_64.deb` | `sudo dpkg -i CineBridge-*.deb` |
+            | 🐧 Linux (Fedora/RHEL) | `CineBridge-*-x86_64.rpm` | `sudo rpm -i CineBridge-*.rpm` |
             | 🪟 Windows | `CineBridge-Setup-*.exe` | Uruchom instalator |
+            | 🍎 macOS | `CineBridge-*.dmg` | Otwórz i przeciągnij do Applications |
 
             **Baza danych:** SQLite (wbudowana, nic nie trzeba instalować)
           files: release/*

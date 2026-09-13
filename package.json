@@ -1,8 +1,9 @@
 {
   "name": "cinebridge",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "Migruj historię filmową z Filmweb do Letterboxd, Trakt, Simkl i innych serwisów",
   "author": "Marcin77",
+  "email": "moj@email.pl",
   "private": true,
   "main": "electron/main.js",
   "scripts": {
@@ -17,10 +18,14 @@
     "electron:prepare": "node scripts/prepare-electron-build.js",
     "rebuild:electron": "electron-builder install-app-deps",
     "rebuild:node": "npm rebuild better-sqlite3",
-    "pack:linux": "electron-builder --linux AppImage",
-    "pack:win": "electron-builder --win nsis",
+    "pack:linux": "electron-builder --linux AppImage --publish never",
+    "pack:linux:all": "electron-builder --linux AppImage deb rpm --publish never",
+    "pack:win": "electron-builder --win nsis --publish never",
+    "pack:mac": "electron-builder --mac dmg --publish never",
     "build:linux": "npm run build && npm run electron:prepare && npm run rebuild:electron && npm run pack:linux",
+    "build:linux:all": "npm run build && npm run electron:prepare && npm run rebuild:electron && npm run pack:linux:all",
     "build:win": "npm run build && npm run electron:prepare && npm run rebuild:electron && npm run pack:win",
+    "build:mac": "npm run build && npm run electron:prepare && npm run rebuild:electron && npm run pack:mac",
     "dist": "npm run build:linux"
   },
   "dependencies": {
@@ -31,6 +36,7 @@
     "clsx": "^2.1.1",
     "dotenv": "17.3.1",
     "drizzle-orm": "0.45.2",
+    "electron-updater": "^6.8.9",
     "js-cookie": "^3.0.8",
     "jszip": "^3.10.1",
     "lucide-react": "^1.30.0",

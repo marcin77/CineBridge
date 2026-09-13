@@ -6,11 +6,11 @@ function formatDate(dateNumber) {
   return `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`;
 }
 
-function csvEscape(val) {
-  if (val === null || val === undefined) return "";
-  const s = String(val);
-  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
-  return s;
+// Unix ms -> YYYY-MM-DD (oceny odcinków nie mają viewDate, tylko timestamp)
+function formatTimestamp(ms) {
+  if (!ms) return "";
+  const d = new Date(Number(ms));
+  return Number.isNaN(d.getTime()) ? "" : d.toISOString().slice(0, 10);
 }
 
 function formatDuration(ms) {
@@ -27,7 +27,7 @@ function formatDuration(ms) {
 }
 
 class FilmwebScraper {
-  constructor({ client, db, onProgress, signal, testLimit, onCheckpoint, checkpointEvery }) {
+  constructor({ client, db, onProgress, signal, testLimit, onCheckpoint, checkpointEvery, includeEpisodes  }) {
     this.client = client;
     this.db = db;
     this.onProgress = onProgress || (() => {});
@@ -38,11 +38,15 @@ class FilmwebScraper {
     this.userId = null;
     this.favoriteMovieIds = new Set();
     this.favoriteShowIds = new Set();
+    this.includeEpisodes = includeEpisodes !== false; // domyślnie włączone
     this.stats = {
       moviesAdded: 0, moviesRemoved: 0, moviesUpdated: 0,
       showsAdded: 0, showsRemoved: 0, showsUpdated: 0,
       watchlistAdded: 0, watchlistRemoved: 0,
       listsAdded: 0, listsRemoved: 0, listsUpdated: 0,
+      seasonsAdded: 0, seasonsRemoved: 0,
+      episodesAdded: 0, episodesRemoved: 0,
+      showsScanned: 0, showsSkipped: 0,
     };
     this.concurrencyDropped = false; // czy concurrency spadło w trakcie
   }
@@ -113,10 +117,10 @@ async buildItem(id, type, category, opts = {}) {
 
   return {
     type,
-    title: csvEscape(info.title || ""),
-    original_title: csvEscape(info.originalTitle || ""),
+    title: info.title || "",
+    original_title: info.originalTitle || "",
     year: info.year || "",
-    director: csvEscape(director),
+    director: director,
     filmweb_id: id,
     category,
     user_rating: opts.rate && opts.rate > 0 ? opts.rate : "",
@@ -127,6 +131,10 @@ async buildItem(id, type, category, opts = {}) {
     list_id: opts.listId || "",
     list_status: opts.listStatus || "",
     favorite: isFavorite ? "tak" : "nie",
+    parent_show_id: "",
+    season_number: "",
+    episode_number: "",
+    episode_title: "",
   };
 }
 
@@ -536,11 +544,206 @@ async buildItem(id, type, category, opts = {}) {
     }
   }
 
+  // ── Faza 2b: oceny sezonów i odcinków ─────────────────────────────────────
+  async syncEpisodes() {
+    if (!this.includeEpisodes) {
+      this.log("Pomijam oceny sezonów/odcinków (wyłączone w ustawieniach)");
+      return;
+    }
+    this.log("Sprawdzanie ocen sezonów i odcinków...", { phase: "odcinki" });
+    if (!this.db.showScanMeta) this.db.showScanMeta = {};
+
+    const shows = Object.values(this.db.itemsMap).filter(
+      (i) => i.type === "show" && i.category === "watched"
+    );
+    const showIdSet = new Set(shows.map((s) => String(s.filmweb_id)));
+
+    // 1. Usuń sezony/odcinki seriali, które zniknęły z ocenionych
+    for (const key of Object.keys(this.db.itemsMap)) {
+      const it = this.db.itemsMap[key];
+      if (
+        (it.type === "season" || it.type === "episode") &&
+        !showIdSet.has(String(it.parent_show_id))
+      ) {
+        delete this.db.itemsMap[key];
+        if (it.type === "season") this.stats.seasonsRemoved++;
+        else this.stats.episodesRemoved++;
+      }
+    }
+    for (const id of Object.keys(this.db.showScanMeta)) {
+      if (!showIdSet.has(id)) delete this.db.showScanMeta[id];
+    }
+
+    // 2. Skanuj tylko seriale, których ocena/data zmieniła się od ostatniego skanu
+    const toScan = shows.filter((show) => {
+      const meta = this.db.showScanMeta[String(show.filmweb_id)];
+      if (!meta) return true;
+      return (
+        String(meta.rate ?? "") !== String(show.user_rating ?? "") ||
+        (meta.ratedAt ?? "") !== (show.rated_at ?? "")
+      );
+    });
+
+    this.stats.showsScanned = toScan.length;
+    this.stats.showsSkipped = shows.length - toScan.length;
+    this.log(
+      `Seriale do skanowania: ${toScan.length} / bez zmian (pominięte): ${shows.length - toScan.length}`
+    );
+    if (!toScan.length) return;
+
+    await this.processInChunks(
+      this.applyLimit(toScan),
+      async (show) => {
+        try {
+          await this.scanShow(show);
+        } catch (err) {
+          if (err.message === "ABORTED") throw err; // pozwól user-stop przejść dalej
+          this.log(`[odcinki] Błąd przy serialu ${show.filmweb_id} (${show.title}): ${err.message} — pomijam`);
+          // Nie ustawiamy showScanMeta — serial zostanie ponowiony przy następnym skanie
+        }
+      },
+      { phase: "odcinki", chunkSize: 10 }
+    );
+  }
+
+  async scanShow(show) {
+    const showId = show.filmweb_id;
+
+    // Pełny rescan serialu: wyczyść jego stare sezony/odcinki
+    for (const key of Object.keys(this.db.itemsMap)) {
+      const it = this.db.itemsMap[key];
+      if (
+        (it.type === "season" || it.type === "episode") &&
+        String(it.parent_show_id) === String(showId)
+      ) {
+        delete this.db.itemsMap[key];
+      }
+    }
+
+    // Dane wspólne dziedziczone z serialu-rodzica
+    const base = {
+      title: show.title,
+      original_title: show.original_title,
+      year: show.year,
+      director: show.director,
+      category: "watched",
+      list_name: "",
+      list_id: "",
+      list_status: "",
+      favorite: "nie",
+      parent_show_id: showId,
+    };
+
+const seasons = await this.client.getSeasons(showId);
+
+// ── Fallback: serial bez podziału na sezony (mini_serial, flat episodes) ──
+if (seasons.length === 0) {
+  this.log(`Serial ${showId} bez sezonów — próba flat episodes fallback`);
+  const flatEpisodes = await this.client.getFlatEpisodes(showId);
+
+  await this.processInChunks(
+    flatEpisodes,
+    async (ep) => {
+      const eVote = await this.client.getEpisodeVote(this.userId, ep.id);
+      if (!eVote || !(eVote.rate > 0)) return;
+
+      const info = await this.client.getEpisodeInfo(ep.id);
+      const date = eVote.viewDate
+        ? formatDate(eVote.viewDate)
+        : formatTimestamp(eVote.timestamp);
+
+      this.db.itemsMap[this.getItemKey("episode", ep.id, "watched")] = {
+        ...base,
+        type: "episode",
+        filmweb_id: ep.id,
+        user_rating: eVote.rate,
+        rated_at: date,
+        watched_at: date,
+        comment: eVote.comment || "",
+        season_number: 1,
+        episode_number: ep.episodeNumber,
+        episode_title: info?.title?.title || "",
+      };
+      this.stats.episodesAdded++;
+    },
+    { phase: "odcinki", chunkSize: 10 },
+  );
+
+  this.db.showScanMeta[String(showId)] = {
+    rate: show.user_rating,
+    ratedAt: show.rated_at,
+    scannedAt: Date.now(),
+  };
+  return;
+}
+
+// ── Standardowa ścieżka: serial z sezonami ────────────────────────────────
+for (const season of seasons) {
+  this.checkAbort();
+
+  // Ocena sezonu
+  const sVote = await this.client.getSeasonVote(this.userId, season.id);
+  if (sVote && sVote.rate > 0) {
+    const date = sVote.viewDate
+      ? formatDate(sVote.viewDate)
+      : formatTimestamp(sVote.timestamp);
+    this.db.itemsMap[this.getItemKey("season", season.id, "watched")] = {
+      ...base,
+      type: "season",
+      filmweb_id: season.id,
+      user_rating: sVote.rate,
+      rated_at: date,
+      watched_at: date,
+      comment: sVote.comment || "",
+      season_number: season.seasonNumber,
+      episode_number: "",
+      episode_title: "",
+    };
+    this.stats.seasonsAdded++;
+  }
+
+  // Oceny odcinków
+  const episodes = await this.client.getSeasonEpisodes(showId, season.seasonNumber);
+  for (const ep of episodes) {
+    this.checkAbort();
+    const eVote = await this.client.getEpisodeVote(this.userId, ep.id);
+    if (!eVote || !(eVote.rate > 0)) continue;
+
+    const info = await this.client.getEpisodeInfo(ep.id);
+    const date = eVote.viewDate
+      ? formatDate(eVote.viewDate)
+      : formatTimestamp(eVote.timestamp);
+
+    this.db.itemsMap[this.getItemKey("episode", ep.id, "watched")] = {
+      ...base,
+      type: "episode",
+      filmweb_id: ep.id,
+      user_rating: eVote.rate,
+      rated_at: date,
+      watched_at: date,
+      comment: eVote.comment || "",
+      season_number: ep.seasonNumber,
+      episode_number: ep.episodeNumber,
+      episode_title: info?.title?.title || "",
+    };
+    this.stats.episodesAdded++;
+  }
+}
+
+this.db.showScanMeta[String(showId)] = {
+  rate: show.user_rating,
+  ratedAt: show.rated_at,
+  scannedAt: Date.now(),
+};
+
+  }
+
   // ── Glowny przebieg ──────────────────────────────────────────
   async sync() {
     await this.syncMeta();
     await this.syncVotes(["film"], "movie");
     await this.syncVotes(["serial", "tvshow"], "show");
+    await this.syncEpisodes();                      // <- NOWE
     await this.syncWatchlist(["film"], "movie");
     await this.syncWatchlist(["serial", "tvshow"], "show");
     await this.syncLists();

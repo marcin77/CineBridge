@@ -4,11 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Film, LayoutDashboard, Upload, FileDown,
-  BookOpen, Settings, Info,
+  BookOpen, Settings, Info, Download,
 } from "lucide-react";
 import AboutModal from "./AboutModal";
+import UpdateModal from "./UpdateModal";
 import ThemeToggle from "./ThemeToggle";
 import { useState } from "react";
+import { useUpdater } from "@/hooks/use-updater";
+import { useScraperSync } from "@/lib/scraper-sync-context";
 
 const links = [
   { href: "/",        label: "Panel",   icon: LayoutDashboard },
@@ -20,6 +23,12 @@ const links = [
 export default function Nav() {
   const pathname = usePathname();
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [updateOpen, setUpdateOpen] = useState(false);
+
+  const { status, updateInfo, progress, errorMessage, downloadUpdate, installUpdate } = useUpdater();
+  const { running } = useScraperSync();
+
+  const hasUpdate = status === "available" || status === "downloading" || status === "downloaded";
 
   return (
     <>
@@ -56,6 +65,16 @@ export default function Nav() {
 
           {/* Right side */}
           <div className="flex items-center gap-2">
+            {hasUpdate && (
+              <button
+                onClick={() => setUpdateOpen(true)}
+                className="relative flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-emerald-600 transition hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-400/10"
+                title="Dostępna aktualizacja"
+              >
+                <Download size={14} />
+                <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-emerald-400" />
+              </button>
+            )}
             <ThemeToggle />
             <Link
               href="/settings"
@@ -80,6 +99,17 @@ export default function Nav() {
       </header>
 
       <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
+      <UpdateModal
+        open={updateOpen}
+        onClose={() => setUpdateOpen(false)}
+        status={status}
+        updateVersion={updateInfo?.version ?? null}
+        progress={progress}
+        errorMessage={errorMessage}
+        scraperRunning={running}
+        onDownload={downloadUpdate}
+        onInstall={installUpdate}
+      />
     </>
   );
 }

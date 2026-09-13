@@ -53,6 +53,12 @@ export const mediaItems = sqliteTable(
     listStatus: text("list_status"),      // status na liście
     favorite: text("favorite"),           // "tak"/"nie" - czy ulubione
 
+    // Sezony / odcinki (type = "season" | "episode")
+    parentShowId: text("parent_show_id"),      // filmweb ID serialu-rodzica
+    seasonNumber: integer("season_number"),
+    episodeNumber: integer("episode_number"),
+    episodeTitle: text("episode_title"),
+    
     imdbId: text("imdb_id"),
     tmdbId: text("tmdb_id"),
     matchedTitle: text("matched_title"),

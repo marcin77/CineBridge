@@ -1,11 +1,13 @@
 import Papa from "papaparse";
+export type ItemType = "movie" | "show" | "season" | "episode";
 
 export interface ParsedItem {
   title: string;
   originalTitle: string | null;
   year: number | null;
   director: string | null; // <- DODANE
-  type: "movie" | "show";
+ // type: "movie" | "show";
+  type: ItemType;  
   userRating: number | null;
   ratedAt: string | null;
   watchedAt: string | null;
@@ -17,7 +19,11 @@ export interface ParsedItem {
   listId: string | null;
   listStatus: string | null;
   favorite: string | null;
-  category: string;
+  category: string;                  // <- zmiana z "movie" | "show"
+  parentShowId: string | null;
+  seasonNumber: number | null; 
+  episodeNumber: number | null;
+  episodeTitle: string | null;
 }
 
 export interface ParseResult {
@@ -44,7 +50,18 @@ const ALIASES: Record<string, string[]> = {
   listId:        ["list_id", "listid"],
   listStatus:    ["list_status", "liststatus"],
   favorite:      ["favorite", "favourite", "ulubione", "fav"],
+  parentShowId:  ["parent_show_id", "parentshowid", "show_id", "serial_id"],
+  seasonNumber:  ["season_number", "seasonnumber", "season", "sezon"],
+  episodeNumber: ["episode_number", "episodenumber", "episode", "odcinek"],
+  episodeTitle:  ["episode_title", "episodetitle", "tytul_odcinka"],
 };
+
+// helper
+function parseInt10(raw: string | null): number | null {
+  if (!raw) return null;
+  const n = Number.parseInt(raw, 10);
+  return Number.isNaN(n) ? null : n;
+}
 
 function normalizeHeader(h: string) {
   return h.trim().toLowerCase().replace(/\s+/g, "_");
@@ -128,8 +145,14 @@ function rowsToItems(rows: Record<string, string>[]): { items: ParsedItem[]; ski
     // Konwersja "tak"/"nie" na boolean w kategoriach
     const isFavorite = favoriteRaw && /tak|yes|true|1/i.test(favoriteRaw);
 
-    const type: "movie" | "show" =
-      typeRaw && /serial|show|series/i.test(typeRaw) ? "show" : "movie";
+ //   const type: "movie" | "show" =
+ //     typeRaw && /serial|show|series/i.test(typeRaw) ? "show" : "movie";
+    let type: ItemType = "movie";
+    if (typeRaw) {
+      if (/episode|odcinek/i.test(typeRaw))         type = "episode";
+      else if (/season|sezon/i.test(typeRaw))        type = "season";
+      else if (/serial|show|series/i.test(typeRaw))  type = "show";
+    }
 
     const category = parseCategory(categoryRaw, listName);
 
@@ -151,6 +174,10 @@ function rowsToItems(rows: Record<string, string>[]): { items: ParsedItem[]; ski
       listId: listId ?? null,
       listStatus: listStatus ?? null,
       favorite: favoriteRaw ?? null,
+      parentShowId:  pickValue(row, ALIASES.parentShowId),
+      seasonNumber:  parseInt10(pickValue(row, ALIASES.seasonNumber)),
+      episodeNumber: parseInt10(pickValue(row, ALIASES.episodeNumber)),
+      episodeTitle:  pickValue(row, ALIASES.episodeTitle),
     });
   }
   return { items, skipped };

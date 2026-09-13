@@ -12,6 +12,7 @@ class FilmwebClient {
     this.onProgress = onProgress || (() => {});
     this.onReauth = onReauth || null;
     this.errors = 0;
+    this._reauthPromise = null;
     
     // Circuit breaker state (wspólny dla wszystkich workerów)
     this.rateLimitedUntil = 0; // timestamp do którego czekamy po 429
@@ -69,29 +70,48 @@ class FilmwebClient {
       return null;
     }
 
-    if (resp.status === 401) {
-      if (attempt <= 3) {
-        this.log(`[401] proba ${attempt}/3 dla ${endpoint}`);
-        await this.sleep(1500 * attempt);
-        return this.fetch(endpoint, attempt + 1);
-      }
-
-      if (this.onReauth && attempt === 4) {
-        this.log(`[401] Sesja wygasła — próba ponownego zalogowania...`);
-        try {
-          const { cookieString, csrfToken } = await this.onReauth();
-          this.cookieString = cookieString;
-          this.csrfToken = csrfToken;
-          this.log(`[401] Re-login OK, kontynuuję od ${endpoint}`);
-          return this.fetch(endpoint, 1);
-        } catch (reauthError) {
-          this.log(`[401] Re-login failed: ${reauthError.message}`);
-          throw new Error(`SESSION_EXPIRED:${endpoint}`);
-        }
-      }
-
+ if (resp.status === 401) {
+  // Przy pierwszej próbie — od razu próbuj re-login (sesja wygasła, retry bez re-loginu nic nie da)
+// ✅ PO — mutex: jeden re-login na raz, pozostałe workery czekają
+if (attempt === 1 && this.onReauth) {
+  // Jeśli inny worker już robi re-login — poczekaj na jego wynik
+  if (this._reauthPromise) {
+    this.log(`[401] Czekam na re-login innego workera...`);
+    try {
+      await this._reauthPromise;
+      // Re-login się udał — ponów request z nową sesją
+      return this.fetch(endpoint, 2);
+    } catch {
       throw new Error(`SESSION_EXPIRED:${endpoint}`);
     }
+  }
+
+  // Pierwszy worker który dostał 401 — robi re-login
+  this.log(`[401] Sesja wygasła — próba ponownego zalogowania...`);
+  this._reauthPromise = this.onReauth()
+    .then(({ cookieString, csrfToken }) => {
+      this.cookieString = cookieString;
+      this.csrfToken = csrfToken;
+      this.log(`[401] Re-login OK, kontynuuję od ${endpoint}`);
+    })
+    .finally(() => {
+      // Wyczyść promise po zakończeniu (udanym lub nie)
+      this._reauthPromise = null;
+    });
+
+  try {
+    await this._reauthPromise;
+    return this.fetch(endpoint, 2);
+  } catch (reauthError) {
+    this.log(`[401] Re-login failed: ${reauthError.message}`);
+    throw new Error(`SESSION_EXPIRED:${endpoint}`);
+  }
+}
+throw new Error(`SESSION_EXPIRED:${endpoint}`);
+
+  // attempt=2 po re-loginie nadal 401 → poddajemy się
+  throw new Error(`SESSION_EXPIRED:${endpoint}`);
+}
 
     if (resp.status === 429) {
       this.consecutive429++;
@@ -123,7 +143,18 @@ class FilmwebClient {
     if (this.consecutive429 > 0) {
       this.consecutive429 = 0;
     }
-    
+
+    // Filmweb zwraca 200 z PUSTYM body dla nieocenionych sezonów/odcinków
+    const text = await resp.text();
+    if (!text || !text.trim()) return null;
+    try {
+      return JSON.parse(text);
+    } catch {
+      this.log(`Niepoprawny JSON -> ${endpoint}`);
+      this.errors++;
+      return null;
+    }
+
     return resp.json();
   }
 
@@ -194,6 +225,41 @@ class FilmwebClient {
 
   async getListDetails(listId) {
     return this.fetch(`lists/${listId}`);
+  }
+
+  // ── Sezony / odcinki ───────────────────────────────────────
+
+  /** [{ id, seasonNumber, yearStart, ... }] */
+  async getSeasons(showId) {
+    const data = await this.fetch(`serial/${showId}/seasons`);
+    return Array.isArray(data) ? data : [];
+  }
+
+  /** [{ id, seasonNumber, episodeNumber, duration, seasonId }] */
+  async getSeasonEpisodes(showId, seasonNumber) {
+    const data = await this.fetch(`serial/${showId}/season/${seasonNumber}/episodes`);
+    return Array.isArray(data) ? data : [];
+  }
+
+  /** { id, title: { title, lang }, seasonNumber, episodeNumber } */
+  async getEpisodeInfo(episodeId) {
+    return this.fetch(`episode/${episodeId}/info`);
+  }
+
+  /** null gdy brak oceny */
+  async getSeasonVote(userId, seasonId) {
+    return this.getUserVote(userId, "serialSeason", seasonId);
+  }
+
+  /** null gdy brak oceny */
+  async getEpisodeVote(userId, episodeId) {
+    return this.getUserVote(userId, "filmEpisode", episodeId);
+  }
+
+  /** Dla seriali bez sezonów (seasonId: null) — [{ id, episodeNumber, duration }] */
+async getFlatEpisodes(showId) {
+  const data = await this.fetch(`serial/${showId}/episodes`);
+  return Array.isArray(data) ? data : [];
   }
 }
 
