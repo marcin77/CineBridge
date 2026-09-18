@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Download, ChevronDown, ChevronUp, Check, Loader2, Database, Trash2 } from "lucide-react";
 
 interface Props {
@@ -46,6 +46,14 @@ export default function BatchExportPanel({ batchId, filename }: Props) {
   const [clearingCache, setClearingCache] = useState(false);
   const [cacheCleared, setCacheCleared]   = useState(false); 
   const [matchError, setMatchError] = useState<string | null>(null);
+  const [hasUnmatched, setHasUnmatched] = useState<boolean | null>(null);
+
+useEffect(() => {
+  fetch(`/api/import/${batchId}/tmdb-match/status`)
+    .then(r => r.json())
+    .then(d => setHasUnmatched(d.remaining > 0))
+    .catch(() => setHasUnmatched(false));
+}, [batchId]);
 
   async function handleTmdbMatch() {
     setMatching(true);
@@ -53,10 +61,9 @@ export default function BatchExportPanel({ batchId, filename }: Props) {
     setMatchDone(false);
     setMatchError(null);
 
-    // Sumy skumulowane przez cały przebieg
     let totalMatched = 0;
     let totalFailed  = 0;
-    let total        = 0;   // ustalimy po pierwszym chunku
+    let total        = 0;
 
     try {
       let remaining = 1;
@@ -74,16 +81,44 @@ export default function BatchExportPanel({ batchId, filename }: Props) {
         totalFailed  += data.failed;
         remaining     = data.remaining;
 
-        // Przy pierwszym chunku ustal łączną liczbę do dopasowania
+        // Przy pierwszym chunku ustal total — tylko filmy/seriale
         if (total === 0) {
           total = totalMatched + totalFailed + remaining;
         }
 
         setMatchStats({ matched: totalMatched, failed: totalFailed, remaining, total });
 
-        // Zatrzymaj jeśli nic nie ma do przetworzenia
         if (data.matched === 0 && data.failed === 0) break;
         if (remaining > 0) await new Promise(r => setTimeout(r, 300));
+      }
+
+      // Po zakończeniu matchingu filmów/seriali — pobierz ile odcinków/sezonów
+      const epStatusRes = await fetch(`/api/import/${batchId}/tmdb-episodes/status`);
+      if (epStatusRes.ok) {
+        const epStatus = await epStatusRes.json();
+        const epTotal = epStatus.remaining ?? 0;
+        if (epTotal > 0) {
+          // Rozszerz total o odcinki i sezony
+          total = total + epTotal;
+          setMatchStats(prev => prev ? { ...prev, total } : null);
+        }
+      }
+
+      // Pętla odcinków
+      let epRemaining = 1;
+
+      while (epRemaining > 0) {
+        const epRes = await fetch(`/api/import/${batchId}/tmdb-episodes`, { method: "POST" });
+        const epData = await epRes.json();
+        if (!epRes.ok) break;
+        epRemaining = epData.remaining ?? 0;
+        setMatchStats(prev => prev ? {
+          ...prev,
+          matched: prev.matched + (epData.updated ?? 0),
+          failed: prev.failed + (epData.failed ?? 0),
+        } : null);
+        if (epData.remaining === 0) break;
+        if (epRemaining > 0) await new Promise(r => setTimeout(r, 300));
       }
 
       setMatchDone(true);
@@ -265,8 +300,12 @@ export default function BatchExportPanel({ batchId, filename }: Props) {
                 {matching
                   ? <Loader2 size={12} className="animate-spin" />
                   : <Database size={12} />}
-                {matching ? "Dopasowywanie…" : matchDone ? "Dopasuj ponownie" : "Dopasuj wszystkie"}
-              </button>
+                {matching
+                  ? "Dopasowywanie…"
+                  : (matchDone || hasUnmatched === false)
+                    ? "Dopasuj ponownie"
+                    : "Dopasuj wszystkie"}  
+                </button>
 
               <button
                 onClick={handleClearTmdbCache}
@@ -283,7 +322,7 @@ export default function BatchExportPanel({ batchId, filename }: Props) {
 
             {cacheCleared && (
               <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                ✓ Cache wyczyszczony — kliknij „Dopasuj wszystkie" aby wyszukać ponownie.
+                ✓ Cache wyczyszczony — kliknij „Dopasuj wszystkie” aby wyszukać ponownie.
               </p>
             )}
           </div>

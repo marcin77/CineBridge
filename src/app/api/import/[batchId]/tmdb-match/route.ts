@@ -97,7 +97,7 @@ export async function POST(
           imdbId: result?.imdbId ?? null,
           tmdbId: result?.tmdbId ?? null,
           traktId: null,
-          matchedTitle: result?.originalTitle ?? null,
+          matchedTitle: result?.title ?? null,
           matchedYear: result?.year ?? null,
           confidence: result ? 100 : 0,
           score: null,
@@ -111,7 +111,7 @@ export async function POST(
         .set({
           tmdbId:       result.tmdbId,
           imdbId:       result.imdbId ?? null,
-          matchedTitle: result.originalTitle,
+          matchedTitle: result.title,
           matchedYear:  result.year ?? item.year,
           tmdbSearched: true,
           updatedAt:    new Date().toISOString(),

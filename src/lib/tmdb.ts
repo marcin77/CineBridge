@@ -76,8 +76,22 @@ export async function searchTmdb(
   const apiKey = await getApiKey();
   if (!apiKey) return null;
 
+  // Usuń znaki specjalne które psują wyszukiwanie TMDB
+ const sanitize = (t: string) =>
+  t
+    .replace(/²/g, "2")
+    .replace(/³/g, "3")
+    .replace(/¹/g, "1")
+    .replace(/[®™©°•·]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  title = sanitize(title);
+  if (originalTitle) originalTitle = sanitize(originalTitle);
+
   const endpoint = type === "show" ? "tv" : "movie";
 
+  
   // Deduplikacja tytułów do sprawdzenia
   const titlesToTry = [
     ...new Set(
@@ -85,29 +99,50 @@ export async function searchTmdb(
     ),
   ];
 
+  // Helper — skróć tytuł do części przed dwukropkiem, tylko gdy podtytuł ma min. 2 słowa
+  const shortTitle = (t: string): string | null => {
+    const colonIdx = t.indexOf(":");
+    if (colonIdx === -1) return null;
+    const sub = t.slice(colonIdx + 1).trim();
+    if (sub.split(/\s+/).length < 2) return null; // "Avengers: Endgame" → nie skróci
+    return t.slice(0, colonIdx).trim();
+  };
+
+  const short0 = shortTitle(titlesToTry[0]);
+  const short1 = titlesToTry[1] ? shortTitle(titlesToTry[1]) : null;
+
   // ── Strategia fallback (kolejność od najbardziej do najmniej precyzyjnej) ──
-  const strategies: Array<() => Promise<Record<string, unknown> | null>> = [
-    // 1. Główny tytuł + rok (bez language — zwraca wyniki globalne, sortowane po popularności)
-    () => tmdbSearch(apiKey, endpoint, titlesToTry[0], year),
-
-    // 2. Główny tytuł bez roku (rok może być błędny o 1 w Filmweb)
-    ...(year ? [() => tmdbSearch(apiKey, endpoint, titlesToTry[0], null)] : []),
-
-    // 3. Oryginalny tytuł + rok (jeśli różni się od głównego)
+    const strategies: Array<() => Promise<Record<string, unknown> | null>> = [
+    // 1. Oryginalny tytuł + rok (angielski z Filmweb — najbardziej precyzyjny)
     ...(titlesToTry[1]
       ? [() => tmdbSearch(apiKey, endpoint, titlesToTry[1], year)]
       : []),
-
-    // 4. Oryginalny tytuł bez roku
+    // 2. Oryginalny tytuł bez roku
     ...(titlesToTry[1] && year
       ? [() => tmdbSearch(apiKey, endpoint, titlesToTry[1], null)]
       : []),
-
-    // 5. Główny tytuł z language=pl-PL + rok (polskie tytuły lokalne)
+    // 3. Główny tytuł + rok (polski — fallback gdy brak original_title)
+    () => tmdbSearch(apiKey, endpoint, titlesToTry[0], year),
+    // 4. Główny tytuł bez roku
+    ...(year ? [() => tmdbSearch(apiKey, endpoint, titlesToTry[0], null)] : []),
+    // 5. Skrócony tytuł główny + rok
+    ...(short0 ? [() => tmdbSearch(apiKey, endpoint, short0, year)] : []),
+    // 6. Skrócony tytuł główny bez roku
+    ...(short0 && year ? [() => tmdbSearch(apiKey, endpoint, short0, null)] : []),
+    // 7. Skrócony oryginalny + rok
+    ...(short1 ? [() => tmdbSearch(apiKey, endpoint, short1, year)] : []),
+    // 8. Skrócony oryginalny bez roku
+    ...(short1 && year ? [() => tmdbSearch(apiKey, endpoint, short1, null)] : []),
+    // 9. Główny tytuł z language=pl-PL + rok
     () => tmdbSearch(apiKey, endpoint, titlesToTry[0], year, "pl-PL"),
-
-    // 6. Główny tytuł z language=pl-PL bez roku
+    // 10. Główny tytuł z language=pl-PL bez roku
     ...(year ? [() => tmdbSearch(apiKey, endpoint, titlesToTry[0], null, "pl-PL")] : []),
+    
+ 
+    // 5. Główny tytuł z language=pl-PL + rok (polskie tytuły lokalne bez angielskiego)
+ //   () => tmdbSearch(apiKey, endpoint, titlesToTry[0], year, "pl-PL"),
+    // 6. Główny tytuł z language=pl-PL bez roku
+ //   ...(year ? [() => tmdbSearch(apiKey, endpoint, titlesToTry[0], null, "pl-PL")] : []),
   ];
 
   for (const strategy of strategies) {

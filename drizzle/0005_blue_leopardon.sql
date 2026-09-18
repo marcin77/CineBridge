@@ -1,0 +1,1 @@
+ALTER TABLE `media_items` ADD `episode_title_en` text;

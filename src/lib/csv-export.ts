@@ -35,7 +35,7 @@ function formatDate(d: Date | string | null | undefined, short = false): string 
 // ─── Letterboxd format ────────────────────────────────────────────────────────
 // Compatible with Letterboxd CSV import
 // Cols: Title, Year, Directors, WatchedDate, Rating10, Rating, Review, Tags
-const LETTERBOXD_HEADER = ["Title", "Year", "Directors", "WatchedDate", "Rating10", "Rating", "Review", "Tags"];
+const LETTERBOXD_HEADER = ["tmdbID", "imdbID", "Title", "Year", "Directors", "WatchedDate", "Rating10", "Rating", "Review", "Tags"];
 
 function toLetterboxdRow(item: MediaItem): string {
   const rating10 = item.userRating ?? "";
@@ -46,6 +46,7 @@ function toLetterboxdRow(item: MediaItem): string {
     item.category === "favorite"  ? "favorite"  : "",
     item.listName ?? "",
     item.type === "show"           ? "serial"    : "",
+    item.episodeTitleEn ?? item.episodeTitle ?? "",
   ]
     .filter(Boolean)
     .join(", ");
@@ -57,9 +58,11 @@ function toLetterboxdRow(item: MediaItem): string {
     : "";
 
   return [
+    item.tmdbId ?? "",
+    item.imdbId ?? "",
     cleanTitle(item.matchedTitle ?? item.originalTitle ?? item.title),
     item.matchedYear  ?? item.year ?? "",
-    directors, // <- nowa kolumna
+    directors,
     formatDate(item.watchedAt ?? item.ratedAt, true),
     rating10,
     rating5,
@@ -103,12 +106,14 @@ const watchlist = items.filter(
   (i) => i.type === "movie" && i.category === "watchlist"
 );
 if (watchlist.length > 0) {
-  const WATCHLIST_HEADER = ["Title", "Year", "Directors"];
+  const WATCHLIST_HEADER = ["tmdbID", "imdbID", "Title", "Year", "Directors"];
   const rows = watchlist.map((item) => {
     const directors = item.director
       ? item.director.split(";").map((d) => d.trim()).join(", ")
       : "";
     return [
+      item.tmdbId ?? "",
+      item.imdbId ?? "",
       cleanTitle(item.matchedTitle ?? item.originalTitle ?? item.title),
       item.matchedYear ?? item.year ?? "",
       directors,
@@ -141,12 +146,14 @@ for (const [listName, listMovies] of listMap.entries()) {
     .trim()
     .replace(/\s+/g, "_");
 
-  const LIST_HEADER = ["Title", "Year", "Directors"];
+  const LIST_HEADER = ["tmdbID", "imdbID", "Title", "Year", "Directors"];
   const rows = listMovies.map((item) => {
     const directors = item.director
       ? item.director.split(";").map((d) => d.trim()).join(", ")
       : "";
     return [
+       item.tmdbId ?? "",
+       item.imdbId ?? "",
       cleanTitle(item.matchedTitle ?? item.originalTitle ?? item.title),
       item.matchedYear ?? item.year ?? "",
       directors,
@@ -170,7 +177,7 @@ const UNIVERSAL_HEADER = [
   "filmweb_id", "imdb_id", "tmdb_id",
   "category", "user_rating", "rated_at", "watched_at", "comment",
   "list_name", "list_id", "list_status", "favorite",
-  "parent_show_id", "season_number", "episode_number", "episode_title",
+  "parent_show_id", "season_number", "episode_number", "episode_title", "episode_title_en",
 ];
 
 function toUniversalRow(item: MediaItem): string {
@@ -196,13 +203,17 @@ function toUniversalRow(item: MediaItem): string {
     item.seasonNumber ?? "",
     item.episodeNumber ?? "",
     item.episodeTitle ?? "",
+    item.episodeTitleEn ?? "",
   ].map(csvEscape).join(",");
 }
 
 function cleanTitle(title: string | null | undefined): string {
   if (!title) return "";
   return title
-    .replace(/^["'«»]+|["'«»]+$/g, "") // usuń cudzysłowy z początku i końca
+    .replace(/²/g, "2")
+    .replace(/³/g, "3")
+    .replace(/¹/g, "1")
+    .replace(/^[\u201c\u201d\u201e\u00ab\u00bb"'«»]+|[\u201c\u201d\u201e\u00ab\u00bb"'«»]+$/g, "")
     .trim();
 }
 
@@ -239,6 +250,7 @@ function toTraktRow(item: MediaItem): string {
     formatDate(item.watchedAt),
     item.listName     ?? "",
     item.comment      ?? "",
+    item.episodeTitleEn ?? item.episodeTitle ?? "",
   ]
     .map(csvEscape)
     .join(",");
@@ -250,7 +262,10 @@ export function buildTraktCsv(items: MediaItem[]): string {
 }
 
 export function buildSimklCsv(items: MediaItem[]): string {
-  const rows = items.filter(isTitle).map(toSimklRow).filter((r): r is string => r !== null);
+  const rows = items
+    .filter(isTitle)
+    .map(item => toSimklRow(item, items))
+    .filter((r): r is string => r !== null);
   return [SIMKL_HEADER.join(","), ...rows].join("\n");
 }
 
@@ -265,21 +280,34 @@ const SIMKL_HEADER = [
   "Watchlist",
   "WatchedDate",
   "Rating",
+  "LastEpWatched",
   "Memo",
 ];
 
-function simklType(item: MediaItem): string {
-  return item.type === "show" ? "tv" : "movie";
+function lastEpWatched(item: MediaItem, items: MediaItem[]): string {
+  if (item.type !== "show") return "";
+  // Znajdź ostatni obejrzany odcinek dla tego serialu
+  const episodes = items.filter(
+    i =>
+      i.type === "episode" &&
+      i.parentShowId === item.sourceId &&
+      i.category === "watched" &&
+      i.seasonNumber !== null &&
+      i.episodeNumber !== null,
+  );
+  if (episodes.length === 0) return "";
+  // Sortuj po sezonie i odcinku — weź ostatni
+  episodes.sort((a, b) => {
+    if (a.seasonNumber !== b.seasonNumber) return (b.seasonNumber ?? 0) - (a.seasonNumber ?? 0);
+    return (b.episodeNumber ?? 0) - (a.episodeNumber ?? 0);
+  });
+  const last = episodes[0];
+  const s = String(last.seasonNumber ?? 0).padStart(2, "0");
+  const e = String(last.episodeNumber ?? 0).padStart(2, "0");
+  return `S${s}E${e}`;
 }
 
-function simklWatchlistStatus(item: MediaItem): string | null {
-  if (item.category === "watched") return "completed";
-  if (item.category === "watchlist") return "plan to watch";
-  // category === "list" lub cokolwiek innego → pomijamy
-  return null;
-}
-
-function toSimklRow(item: MediaItem): string | null {
+function toSimklRow(item: MediaItem, items: MediaItem[]): string | null {
   const status = simklWatchlistStatus(item);
   if (status === null) return null;
 
@@ -292,10 +320,22 @@ function toSimklRow(item: MediaItem): string | null {
     status,
     formatSimklDate(item.watchedAt ?? item.ratedAt),
     item.userRating ?? "",
+    lastEpWatched(item, items),
     item.comment ?? "",
   ]
     .map(csvEscape)
     .join(",");
+}
+
+function simklType(item: MediaItem): string {
+  return item.type === "show" ? "tv" : "movie";
+}
+
+function simklWatchlistStatus(item: MediaItem): string | null {
+  if (item.category === "watched") return "completed";
+  if (item.category === "watchlist") return "plan to watch";
+  // category === "list" lub cokolwiek innego → pomijamy
+  return null;
 }
 
 // ─── Dispatcher ──────────────────────────────────────────────────────────────

@@ -58,7 +58,8 @@ export const mediaItems = sqliteTable(
     seasonNumber: integer("season_number"),
     episodeNumber: integer("episode_number"),
     episodeTitle: text("episode_title"),
-    
+    episodeTitleEn: text("episode_title_en"),
+
     imdbId: text("imdb_id"),
     tmdbId: text("tmdb_id"),
     matchedTitle: text("matched_title"),

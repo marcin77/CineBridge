@@ -6,12 +6,12 @@ import JSZip from "jszip";
 
 export const dynamic = "force-dynamic";
 
-const CHUNK = 250; // tyle rekordów na plik ma prawdziwy eksport Trakt
+const CHUNK = 250;
 
 type Item = typeof mediaItems.$inferSelect;
 
 // ── helpers ───────────────────────────────────────────────────────────────
-function iso(dateStr: string | null): string | null {
+function iso(dateStr: string | null | undefined): string | null {
   if (!dateStr) return null;
   const d = new Date(dateStr);
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
@@ -20,30 +20,43 @@ function iso(dateStr: string | null): string | null {
 function slugify(title: string, year: number | null): string {
   const base = title
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/\u0142/g, "l").replace(/\u0141/g, "L") // ł → l, Ł → L
+    .replace(/\u00f8/g, "o").replace(/\u00d8/g, "O") // ø → o
+    .replace(/\u00fe/g, "th")                         // þ → th
+    .replace(/\u00df/g, "ss")                         // ß → ss
     .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   return year ? `${base}-${year}` : base;
 }
 
-function numOrNull(v: string | null): number | null {
+function numOrNull(v: string | null | undefined): number | null {
   if (!v) return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }
 
 function movieIds(i: Item) {
-  return { trakt: null, slug: slugify(i.title, i.year), imdb: i.imdbId ?? null, tmdb: numOrNull(i.tmdbId) };
+  return {
+    trakt: null,
+    slug: slugify(bestTitle(i), i.matchedYear ?? i.year),
+    imdb: i.imdbId ?? null,
+    tmdb: numOrNull(i.tmdbId),
+  };
 }
 
+function bestTitle(i: Item): string {
+  const t = i.matchedTitle ?? i.originalTitle ?? i.title ?? "";
+  return t.replace(/²/g, "2").replace(/³/g, "3").replace(/¹/g, "1");
+}
 function showObj(i: Item) {
   return {
-    title: i.title,
-    year: i.year,
-    ids: { trakt: null, slug: slugify(i.title, i.year), tvdb: null, imdb: i.imdbId ?? null, tmdb: numOrNull(i.tmdbId), tvrage: null },
+    title: bestTitle(i),
+    year: i.matchedYear ?? i.year,
+    ids: { trakt: null, slug: slugify(bestTitle(i), i.matchedYear ?? i.year), tvdb: null, imdb: i.imdbId ?? null, tmdb: numOrNull(i.tmdbId), tvrage: null },
   };
 }
 
 function movieObj(i: Item) {
-  return { title: i.title, year: i.year, ids: movieIds(i) };
+  return { title: bestTitle(i), year: i.matchedYear ?? i.year, ids: movieIds(i) };
 }
 
 function chunked<T>(arr: T[], size: number): T[][] {
@@ -53,6 +66,10 @@ function chunked<T>(arr: T[], size: number): T[][] {
 }
 
 function addChunkedFiles(zip: JSZip, name: string, rows: unknown[]) {
+  if (rows.length === 0) {
+    zip.file(`${name}.json`, "[]");
+    return;
+  }
   if (rows.length <= CHUNK) {
     zip.file(`${name}.json`, JSON.stringify(rows, null, 2));
     return;
@@ -78,7 +95,7 @@ export async function GET(
     .where(eq(mediaItems.importBatchId, id))
     .orderBy(desc(mediaItems.ratedAt), desc(mediaItems.watchedAt), asc(mediaItems.title));
 
-  // Serial-rodzic po filmweb ID (sezony/odcinki dziedziczą imdb/tmdb/tytuł/rok)
+  // Serial-rodzic po filmweb ID
   const showsBySourceId = new Map<string, Item>();
   for (const i of items) {
     if (i.type === "show" && i.sourceId) showsBySourceId.set(String(i.sourceId), i);
@@ -89,7 +106,7 @@ export async function GET(
   const watched = (t: string) => items.filter(i => i.category === "watched" && i.type === t);
   const rated   = (t: string) => items.filter(i => i.userRating && i.type === t);
 
-  // liczba ocenionych odcinków per serial (do plays w watched-shows)
+  // liczba odcinków per serial
   const episodeCount = new Map<string, number>();
   for (const e of items.filter(i => i.type === "episode" && i.parentShowId)) {
     const k = String(e.parentShowId);
@@ -136,6 +153,99 @@ export async function GET(
     show: showObj(i),
   }));
 
+  // ── watched-history ──
+  let historyIdCounter = 1;
+
+  const historyMovies = watched("movie").map(i => ({
+    id: historyIdCounter++,
+    watched_at: iso(i.watchedAt ?? i.ratedAt),
+    action: "watch",
+    type: "movie",
+    movie: movieObj(i),
+  }));
+
+  const historyEpisodes = watched("episode").map(i => {
+    const parent = parentOf(i);
+    return {
+      id: historyIdCounter++,
+      watched_at: iso(i.watchedAt ?? i.ratedAt),
+      action: "watch",
+      type: "episode",
+      episode: {
+        season: i.seasonNumber,
+        number: i.episodeNumber,
+        title: i.episodeTitle ?? null,
+        ids: { trakt: null, tvdb: null, imdb: null, tmdb: null, tvrage: null },
+      },
+      show: showObj(parent),
+    };
+  });
+
+  const watchedHistory = [...historyMovies, ...historyEpisodes]
+    .filter(h => h.watched_at !== null)
+    .sort((a, b) => new Date(b.watched_at!).getTime() - new Date(a.watched_at!).getTime());
+
+  // ── favorites — POPRAWKA: favorite to kolumna, nie kategoria ──
+  const favoriteEntry = (i: Item, rank: number) => ({
+    type: i.type,
+    ...(i.type === "movie" ? { movie: movieObj(i) } : { show: showObj(i) }),
+    rank,
+    id: i.id,
+    listed_at: iso(i.watchedAt ?? i.ratedAt ?? i.createdAt),
+    notes: null,
+    my_rating: i.userRating ?? null,
+  });
+
+  const favorites = items
+    .filter(i => i.favorite === "tak" && (i.type === "movie" || i.type === "show"))
+    .map((i, idx) => favoriteEntry(i, idx + 1));
+
+  // ── comments — POPRAWKA: sezon i odcinek mają prawdziwe komentarze ──
+  const commentEntry = (i: Item) => {
+    const parent = parentOf(i);
+    const base = {
+      comment: {
+        id: i.id,
+        comment: i.comment,
+        spoiler: false,
+        review: false,
+        parent_id: 0,
+        created_at: iso(i.ratedAt ?? i.watchedAt ?? i.createdAt),
+        updated_at: iso(i.ratedAt ?? i.watchedAt ?? i.createdAt),
+        replies: 0,
+        likes: 0,
+        user_rating: i.userRating ?? null,
+        language: "pl",
+      },
+    };
+
+    if (i.type === "movie")   return { type: "movie",   movie:   movieObj(i), ...base };
+    if (i.type === "show")    return { type: "show",    show:    showObj(i),  ...base };
+    if (i.type === "season")  return {
+      type: "season",
+      season: { number: i.seasonNumber, ids: { trakt: null, tvdb: null, tmdb: null, tvrage: null } },
+      show: showObj(parent),
+      ...base,
+    };
+    // episode
+    return {
+      type: "episode",
+      episode: {
+        season: i.seasonNumber, number: i.episodeNumber, title: i.episodeTitle ?? null,
+        ids: { trakt: null, tvdb: null, imdb: null, tmdb: null, tvrage: null },
+      },
+      show: showObj(parent),
+      ...base,
+    };
+  };
+
+  const hasComment = (i: Item) => !!(i.comment && i.comment.trim() !== "");
+
+  const commentsMovies   = items.filter(i => i.type === "movie"   && hasComment(i)).map(commentEntry);
+  const commentsShows    = items.filter(i => i.type === "show"    && hasComment(i)).map(commentEntry);
+  const commentsSeasons  = items.filter(i => i.type === "season"  && hasComment(i)).map(commentEntry);
+  const commentsEpisodes = items.filter(i => i.type === "episode" && hasComment(i)).map(commentEntry);
+
   // ── lists ──
   const listEntry = (i: Item, rank: number) => ({
     type: i.type,
@@ -160,15 +270,44 @@ export async function GET(
     customLists.get(key)!.push(i);
   }
 
+  const now = new Date().toISOString();
+  const listsManifest = Array.from(customLists.entries()).map(([key, listItems]) => {
+    const [listIdRaw, listName] = key.split("|");
+    const listId = Number(listIdRaw) || 0;
+    return {
+      name: listName,
+      description: "",
+      privacy: "private",
+      share_link: null,
+      type: "personal",
+      display_numbers: false,
+      allow_comments: true,
+      sort_by: "rank",
+      sort_how: "asc",
+      created_at: now,
+      updated_at: now,
+      item_count: listItems.length,
+      comment_count: 0,
+      likes: 0,
+      ids: { slug: slugify(listName, null) || "lista", trakt: listId || null },
+    };
+  });
+
   // ── zip ──
   const zip = new JSZip();
-  addChunkedFiles(zip, "ratings-movies", ratingsMovies);
-  zip.file("ratings-shows.json",    JSON.stringify(ratingsShows, null, 2));
-  zip.file("ratings-seasons.json",  JSON.stringify(ratingsSeasons, null, 2));
-  zip.file("ratings-episodes.json", JSON.stringify(ratingsEpisodes, null, 2));
-  addChunkedFiles(zip, "watched-movies", watchedMovies);
-  zip.file("watched-shows.json",    JSON.stringify(watchedShows, null, 2));
-  zip.file("lists-watchlist.json",  JSON.stringify(watchlist, null, 2));
+
+  addChunkedFiles(zip, "ratings-movies",   ratingsMovies);
+  addChunkedFiles(zip, "ratings-shows",    ratingsShows);
+  zip.file("ratings-seasons.json",         JSON.stringify(ratingsSeasons,  null, 2));
+  zip.file("ratings-episodes.json",        JSON.stringify(ratingsEpisodes, null, 2));
+
+  addChunkedFiles(zip, "watched-movies",   watchedMovies);
+  zip.file("watched-shows.json",           JSON.stringify(watchedShows,    null, 2));
+  addChunkedFiles(zip, "watched-history",  watchedHistory);
+
+  zip.file("lists-watchlist.json",         JSON.stringify(watchlist,       null, 2));
+  zip.file("lists-favorites.json",         JSON.stringify(favorites,       null, 2));
+  zip.file("lists-lists.json",             JSON.stringify(listsManifest,   null, 2));
 
   for (const [key, listItems] of customLists) {
     const [listId, listName] = key.split("|");
@@ -179,14 +318,26 @@ export async function GET(
     );
   }
 
-  const buf = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE", compressionOptions: { level: 6 } });
+  addChunkedFiles(zip, "comments-movies",   commentsMovies);
+  zip.file("comments-shows.json",           JSON.stringify(commentsShows,    null, 2));
+  zip.file("comments-seasons.json",         JSON.stringify(commentsSeasons,  null, 2));
+  zip.file("comments-episodes.json",        JSON.stringify(commentsEpisodes, null, 2));
+  zip.file("comments-lists.json",           "[]");
+  // hidden-* usunięte — Filmweb nie ma tej funkcji, pliki byłyby zawsze puste
+
+  const buf = await zip.generateAsync({
+    type: "nodebuffer",
+    compression: "DEFLATE",
+    compressionOptions: { level: 6 },
+  });
+
   const date = new Date().toISOString().slice(0, 10);
   const filename = `cinebridge-filmweb_trakt-format_export_${date}.zip`;
 
-return new NextResponse(new Uint8Array(buf), {
-  headers: {
-    "Content-Type": "application/zip",
-    "Content-Disposition": `attachment; filename="${filename}"`,
-  },
-});
+  return new NextResponse(new Uint8Array(buf), {
+    headers: {
+      "Content-Type": "application/zip",
+      "Content-Disposition": `attachment; filename="${filename}"`,
+    },
+  });
 }

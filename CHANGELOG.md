@@ -1,5 +1,86 @@
 # Changelog
 
+## [1.3.0]
+
+### ✨ Dodano
+- Eksport Trakt ZIP: **komentarze do sezonów i odcinków** — wcześniej pliki
+  `comments-seasons.json` i `comments-episodes.json` były zawsze puste (`[]`);
+  teraz zawierają prawdziwe komentarze z Filmweb
+- Eksport Simkl CSV: kolumna **`LastEpWatched`** — ostatni obejrzany odcinek serialu
+  w formacie `S04E08`; wyznaczany na podstawie odcinków z bazy z najwyższym
+  numerem sezonu i odcinka
+- Universal CSV: kolumny **`matched_title`** i **`matched_year`** osobno od `title`/`year` —
+  pełny backup wszystkich pól
+- Universal CSV: kolumna **`episode_title_en`** — angielski tytuł odcinka z TMDB;
+  `episode_title` zachowuje oryginalny polski tytuł z Filmweb
+- Letterboxd CSV/ZIP: kolumny **`tmdbID`** i **`imdbID`** — Letterboxd używa ich do
+  precyzyjnego dopasowania bez matchowania po tytule
+- TMDB matching: **przycisk "Dopasuj ponownie"** przy załadowaniu strony gdy wszystko
+  już dopasowane
+- TMDB matching: **automatyczne uzupełnianie angielskich tytułów odcinków** i
+  `tmdb_id` sezonów/odcinków po zakończeniu matchingu seriali — działa cicho w tle
+- TMDB matching: **pasek postępu uwzględnia odcinki i sezony** w łącznym liczniku
+- Schemat bazy: nowa kolumna **`episode_title_en`**
+- TMDB matching: `tmdb_id` i `episode_title_en` dla **sezonów bez odcinków** —
+  wcześniej sezony które nie mają przypisanych odcinków w bazie były pomijane
+  przez endpoint `tmdb-episodes`
+
+### 🐛 Naprawiono
+- Eksport wszystkich formatów: `cleanTitle` zamienia `²³¹` na cyfry —
+  znaki superscript mogły powodować problemy przy imporcie na serwisach
+- Eksport Trakt ZIP: `bestTitle` zamienia `²³¹` na cyfry — spójne z `cleanTitle`
+- Eksport Trakt ZIP: **ulubione** (`lists-favorites.json`) były zawsze puste —
+  filtr sprawdzał `category = 'favorite'` zamiast kolumny `favorite = 'tak'`
+- Eksport Trakt ZIP: **tytuły filmów i seriali po polsku** zamiast angielskich —
+  `movieObj()` i `showObj()` używały `i.title` (polski z Filmweb) zamiast
+  `matchedTitle ?? originalTitle ?? title`; poprawiono też `slug` i `year`
+  (priorytet `matchedYear` nad `year`)
+- Eksport Trakt ZIP: slug zawierał błędne znaki dla tytułów z `ł/Ł` —
+  `normalize("NFD")` nie konwertuje `ł` (osobny znak Unicode U+0142);
+  dodano jawne mapowanie `ł→l`, `Ł→L`, `ø→o`, `ß→ss`, `þ→th`;
+  dodano też usuwanie znaków `²³¹®™©` przed slugify
+- Eksport Trakt ZIP: pliki `hidden-*.json` (5 plików zawsze pustych) usunięte —
+  Filmweb nie ma funkcji ukrywania, pliki nigdy nie zawierały danych
+- Eksport Letterboxd: tag `favorite` w kolumnie Tags nigdy się nie pojawiał —
+  filtr sprawdzał `category === 'favorite'` zamiast `favorite === 'tak'`
+- TMDB matching: `matchedTitle` zapisywał `original_title` z TMDB (koreański,
+  japoński, chiński itd.) zamiast `title` (angielski/łaciński) — naprawiono
+  zapis w `tmdb-match/route.ts` (`result.title` zamiast `result.originalTitle`)
+- TMDB matching: kolejność strategii — najpierw `original_title` (angielski z
+   Filmweb),
+  potem polski `title`;
+- TMDB matching: sanityzacja tytułów przed wysłaniem do API — usuwa znaki `®™©²³¹°•·`
+  które blokowały dopasowanie
+- TMDB matching: nowa strategia skróconego tytułu — gdy tytuł zawiera `:` i podtytuł
+  ma min. 2 słowa, próbuje też części przed dwukropkiem
+- TMDB matching: sanityzacja `²→2`, `³→3`, `¹→1` zamiast usuwania
+- TMDB matching: kolejność strategii — `original_title` przed `title` powodowała
+  błędne dopasowania gdy `original_title` zawierał znaki specjalne 
+- TMDB cache: **pełny reset** przy "Wyczyść cache" — czyści cache i resetuje
+  `tmdb_id/imdb_id/matched_title/matched_year/tmdb_searched` w `media_items`;
+  wcześniej tylko czyścił cache bez resetowania rekordów
+- TMDB cache: `matchedTitle` w cache zapisywał `result.originalTitle` (koreański/
+  japoński) zamiast `result.title` (angielski) — źródło powracających nie-łacińskich tytułów mimo wielokrotnego czyszczenia cache
+- `cleanTitle`: obsługuje typograficzne cudzysłowy `"` `"` (Unicode U+201C/U+201D) —
+  naprawia niektóre tytuły zwracane przez TMDB
+- „Zakończono" wyświetlało się przed zakończeniem uzupełniania tytułów odcinków —
+  przeniesiono `setMatchDone(true)` na koniec pełnego procesu
+- Endpoint `tmdb-episodes`: sezony oznaczane jako `tmdb_searched = true`
+  nawet gdy TMDB nie ma ich ID — eliminuje nieskończoną pętlę
+- Endpoint `tmdb-episodes`: `remaining` liczony po przetworzeniu sezonów
+  i uwzględnia zarówno odcinki jak i sezony (`tmdb_searched = false`)
+- Endpoint `tmdb-episodes`: sezony z już wypełnionym `tmdb_id` (przez pętlę odcinków)
+  ale bez `tmdb_searched = true` były pomijane i powodowały nieskończoną pętlę —
+  zmieniono filtr z `isNull(tmdbId)` na `tmdbSearched = false` 
+- Pasek postępu: `total` ustalany po pierwszym chunku filmów/seriali,
+  następnie powiększany o odcinki/sezony po zakończeniu ich matchingu —
+  eliminuje przekraczanie 100% i błędne wartości przy małej liczbie rekordów
+
+
+### 🎨 Poprawiono
+- Eksport Trakt ZIP: `ratingsShows` używa teraz `addChunkedFiles` zamiast
+  `zip.file` — spójne z `ratingsMovies`, obsługuje duże kolekcje seriali
+
 ## [1.2.0]
 
 ### ✨ Dodano
