@@ -5,11 +5,23 @@
 
 [![GitHub release](https://img.shields.io/github/v/release/marcin77/CineBridge)](https://github.com/marcin77/CineBridge/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey)](https://github.com/marcin77/CineBridge/releases)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)]
+(https://github.com/marcin77/CineBridge/releases)
+
+🌐 **Strona projektu:** [marcin77.github.io/CineBridge](https://marcin77.github.io/CineBridge/)
 
 CineBridge to aplikacja desktopowa z wbudowanym scraperem Filmweb, który pobiera Twoje oceny, komentarze, watchlistę i listy, a następnie eksportuje je do formatów kompatybilnych z popularnymi serwisami filmowymi.
 
 ---
+
+## 🎯 Dlaczego CineBridge, a nie gotowy skrypt?
+
+Większość dostępnych Filmweb scraperów to skrypty konsolowe wymagające:
+- instalacji Pythona lub Node.js
+- ręcznego kopiowania kodu źródłowego HTML
+- znajomości terminala
+
+CineBridge to **aplikacja desktopowa z GUI** — instalujesz jak każdy program, logujesz się i klikasz "Synchronizuj". Reszta dzieje się automatycznie.
 
 ## ✨ Główne funkcje
 
@@ -81,13 +93,13 @@ Oprócz wbudowanego scrapera, CineBridge obsługuje:
 ### Dla użytkowników końcowych (binarka)
 
 1. **Pobierz najnowszą wersję** z [Releases](https://github.com/your-username/cinebridge/releases)
-2. **Linux:** `CineBridge-1.0.0-x86_64.AppImage`
+2. **Linux:** `CineBridge-*.AppImage`
 ```markdown
    chmod +x CineBridge-1.0.0-x86_64.AppImage
    ./CineBridge-1.0.0-x86_64.AppImage
 ```
-3. **Windows:** `CineBridge-Setup-1.0.0.exe` (TODO)
-4. **macOS:** `CineBridge-1.0.0.dmg` (TODO)
+3. **Windows:** `CineBridge-Setup-*.exe` — uruchom instalator
+4. **macOS:** `CineBridge-*.dmg` — otwórz i przeciągnij do Applications
 
 ## 🐧 Linux — integracja AppImage z systemem
 
