@@ -5,8 +5,7 @@
 
 [![GitHub release](https://img.shields.io/github/v/release/marcin77/CineBridge)](https://github.com/marcin77/CineBridge/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)]
-(https://github.com/marcin77/CineBridge/releases)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)](https://github.com/marcin77/CineBridge/releases)
 
 🌐 **Strona projektu:** [marcin77.github.io/CineBridge](https://marcin77.github.io/CineBridge/)
 
