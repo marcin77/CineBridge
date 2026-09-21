@@ -2,12 +2,16 @@
 
 const { spawnSync } = require("child_process");
 
+const pkg = require("../package.json");
+console.log(`[build] Budowanie wersji: ${pkg.version}`);
+
 const result = spawnSync("npx next build --webpack", {
   stdio: "inherit",
   shell: true,
   env: {
     ...process.env,
     SKIP_DB_MIGRATIONS: "1",
+    NEXT_PUBLIC_APP_VERSION: pkg.version,
   },
 });
 

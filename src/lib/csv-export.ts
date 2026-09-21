@@ -224,40 +224,49 @@ export function buildUniversalCsv(items: MediaItem[]): string {
 
 // ─── Trakt-ready format ───────────────────────────────────────────────────────
 const TRAKT_HEADER = [
-  "type",
-  "title",
-  "year",
   "imdb_id",
   "tmdb_id",
-  "category",
+  "type",
+  "watched_at",
+  "watchlisted_at",
   "rating",
   "rated_at",
-  "watched_at",
-  "list_name",
-  "comment",
 ];
 
-function toTraktRow(item: MediaItem): string {
+function toTraktRow(item: MediaItem): string | null {
+  if (item.category === "list") return null;
+  if (!item.imdbId && !item.tmdbId) return null;
+
+  // watched_at — tylko dla obejrzanych
+  const watchedAt = item.category === "watched"
+    ? formatDate(item.watchedAt ?? item.ratedAt) ?? "unknown"
+    : "";
+
+  // watchlisted_at — tylko dla watchlisty
+  const watchlistedAt = item.category === "watchlist"
+    ? formatDate(item.watchedAt ?? item.ratedAt) || new Date().toISOString()
+    : "";
+
+  const rating  = item.userRating ?? "";
+  const ratedAt = item.userRating ? formatDate(item.ratedAt) : "";
+
   return [
+    item.imdbId  ?? "",
+    item.tmdbId  ?? "",
     item.type,
-    cleanTitle(item.matchedTitle ?? item.originalTitle ?? item.title),
-    item.matchedYear  ?? item.year ?? "",
-    item.imdbId       ?? "",
-    item.tmdbId       ?? "",
-    item.category,
-    item.userRating   ?? "",
-    formatDate(item.ratedAt),
-    formatDate(item.watchedAt),
-    item.listName     ?? "",
-    item.comment      ?? "",
-    item.episodeTitleEn ?? item.episodeTitle ?? "",
+    watchedAt,
+    watchlistedAt,
+    rating,
+    ratedAt,
   ]
     .map(csvEscape)
     .join(",");
 }
 
 export function buildTraktCsv(items: MediaItem[]): string {
-  const rows = items.filter(isTitle).map(toTraktRow);
+  const rows = items
+    .map(toTraktRow)
+    .filter((r): r is string => r !== null);
   return [TRAKT_HEADER.join(","), ...rows].join("\n");
 }
 

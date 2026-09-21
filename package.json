@@ -28,7 +28,9 @@
     "build:linux:all": "npm run build && npm run electron:prepare && npm run rebuild:electron && npm run pack:linux:all",
     "build:win": "npm run build && npm run electron:prepare && npm run rebuild:electron && npm run pack:win",
     "build:mac": "npm run build && npm run electron:prepare && npm run rebuild:electron && npm run pack:mac",
-    "dist": "npm run build:linux"
+    "dist": "npm run build:linux",
+    "version": "npm install --package-lock-only && git add package-lock.json"
+
   },
   "dependencies": {
     "@types/js-cookie": "^3.0.6",

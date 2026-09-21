@@ -3,11 +3,12 @@ import { importBatches, mediaItems } from "@/db/schema";
 import { asc, desc, eq } from "drizzle-orm";
 import { buildLetterboxdZipEntries } from "@/lib/csv-export";
 import JSZip from "jszip";
+import { getExportItems } from "@/lib/export-utils";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ batchId: string }> },
 ) {
   const { batchId } = await params;
@@ -21,15 +22,8 @@ export async function GET(
     return Response.json({ error: "Nie znaleziono importu." }, { status: 404 });
   }
 
-const items = await db
-  .select()
-  .from(mediaItems)
-  .where(eq(mediaItems.importBatchId, id))
-  .orderBy(
-    desc(mediaItems.ratedAt),
-    desc(mediaItems.watchedAt),
-    asc(mediaItems.title)
-  );
+const onlyNew = new URL(req.url).searchParams.get("onlyNew") === "true";
+const items = await getExportItems(id, onlyNew);
 
   const entries = buildLetterboxdZipEntries(items);
 

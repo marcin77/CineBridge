@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { importBatches, mediaItems } from "@/db/schema";
 import { eq, asc, desc } from "drizzle-orm";
 import JSZip from "jszip";
+import { getExportItems } from "@/lib/export-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,13 @@ type Item = typeof mediaItems.$inferSelect;
 function iso(dateStr: string | null | undefined): string | null {
   if (!dateStr) return null;
   const d = new Date(dateStr);
-  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  if (Number.isNaN(d.getTime())) return null;
+  // Jeśli data bez godziny (T00:00:00) — ustaw południe UTC
+  // żeby uniknąć wyświetlania "02:00" w strefach UTC+2
+  const iso = d.toISOString();
+  return iso.endsWith("T00:00:00.000Z")
+    ? iso.replace("T00:00:00.000Z", "T12:00:00.000Z")
+    : iso;
 }
 
 function slugify(title: string, year: number | null): string {
@@ -81,7 +88,7 @@ function addChunkedFiles(zip: JSZip, name: string, rows: unknown[]) {
 
 // ── route ─────────────────────────────────────────────────────────────────
 export async function GET(
-  _req: NextRequest,
+  req: Request,
   { params }: { params: Promise<{ batchId: string }> }
 ) {
   const { batchId } = await params;
@@ -91,9 +98,8 @@ export async function GET(
   const [batch] = await db.select().from(importBatches).where(eq(importBatches.id, id));
   if (!batch) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const items = await db.select().from(mediaItems)
-    .where(eq(mediaItems.importBatchId, id))
-    .orderBy(desc(mediaItems.ratedAt), desc(mediaItems.watchedAt), asc(mediaItems.title));
+  const onlyNew = new URL(req.url).searchParams.get("onlyNew") === "true";
+  const items = await getExportItems(id, onlyNew);
 
   // Serial-rodzic po filmweb ID
   const showsBySourceId = new Map<string, Item>();
