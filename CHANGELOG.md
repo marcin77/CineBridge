@@ -1,5 +1,52 @@
 # Changelog
 
+## [1.4.0]
+
+### ✨ Dodano
+- **Masowe zarządzanie importami** — checkboxy przy każdym imporcie na stronie `/import`,
+  możliwość zaznaczenia wielu importów i usunięcia jednym kliknięciem
+- **"Zaznacz wszystkie" / "Odznacz wszystkie"** — szybkie zaznaczanie wszystkich importów
+- **"Wyczyść historię"** — usuwa wszystkie importy oprócz najnowszego (zabezpieczenie
+  przed przypadkowym usunięciem ostatniego importu)
+- **Oznaczenie najnowszego importu** — badge "najnowszy" przy ostatnim imporcie w tabeli
+- **Eksport tylko nowych pozycji** — checkbox "Eksportuj tylko nowe pozycje (N nowych)"
+  w panelu eksportu; porównuje `source_id` z poprzednimi importami i eksportuje tylko
+  pozycje których nie było we wcześniejszych batchach
+- **Nazwa pliku eksportu zawiera oznaczenie nowych pozycji** — np.
+  `cinebridge-trakt-zip-nowe-16-2026-09-16-filmweb_export_2026-09-16.zip`
+- **Nowy endpoint** `DELETE /api/import/batch-delete` — usuwa wiele batchów naraz
+  przyjmując tablicę `{ ids: number[] }`
+- **Nowy endpoint** `GET /api/import/[batchId]/diff` — porównuje batch z poprzednimi,
+  zwraca `{ hasPrevious, newCount, total, items }` z listą nowych pozycji
+- **Nowy helper** `src/lib/export-utils.ts` — funkcja `getExportItems(batchId, onlyNew)`
+  używana przez wszystkie endpointy eksportu; obsługuje filtrowanie do nowych pozycji
+- **Automatyczna aktualizacja `package-lock.json`** — hook `version` w `package.json`
+  uruchamia `npm install --package-lock-only && git add package-lock.json` po każdym
+  `npm version patch/minor/major`
+- **Logowanie wersji w `scripts/build.js`** — `console.log` z   wersją podczas
+  budowania, wersja przekazywana jako `NEXT_PUBLIC_APP_VERSION`
+
+### 🎨 Zmieniono
+- **Strona `/import`** — tabela importów zastąpiona komponentem `BatchListManager`
+  z checkboxami i przyciskami masowego zarządzania; usunięto indywidualny przycisk
+  "Usuń" z każdego wiersza (zastąpiony checkboxami)
+- **Panel eksportu** — dodano sekcję "Eksportuj tylko nowe pozycje" widoczną tylko
+  gdy istnieje poprzedni import i są nowe pozycje (`hasPrevious=true && newCount>0`)
+- **Endpointy eksportu** obsługują parametr `?onlyNew=true`:
+  `GET /api/import/[batchId]/export`,
+  `GET /api/import/[batchId]/export/trakt-zip`,
+  `GET /api/import/[batchId]/export/letterboxd-zip`
+
+### 🐛 Naprawiono
+- **Trakt CSV — poprawiony format** -  dostosowano pozycje do formatu trakt.tv
+- **Trakt CSV — watchlista trafiała do historii** zamiast watchlisty: kolumna
+  `watchlisted_at` była pusta gdy Filmweb nie zapisuje daty dodania do watchlisty;
+  Trakt interpretował wiersz bez żadnej daty jako historię. Teraz `watchlisted_at`
+  otrzymuje datę eksportu jako fallback — Trakt poprawnie rozpoznaje pozycję jako
+  watchlistę
+- **Trakt CSV — `watched_at` dla obejrzanych bez daty** — zmieniono `?? "unknown"`
+  na `|| "unknown"` żeby poprawnie obsłużyć pusty string zwracany przez `formatDate`
+  
 ## [1.3.0]
 
 ### ✨ Dodano
