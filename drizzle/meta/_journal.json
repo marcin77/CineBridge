@@ -43,6 +43,13 @@
       "when": 1789531797617,
       "tag": "0005_blue_leopardon",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1790447434395,
+      "tag": "0006_hard_firelord",
+      "breakpoints": true
     }
   ]
 }

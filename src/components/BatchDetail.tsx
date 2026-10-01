@@ -51,7 +51,10 @@ export default function BatchDetail({ batchId }: { batchId: number }) {
     setLoading(false);
   }, [batchId, page, filter]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    const loadBatch = () => { void load(); };
+    queueMicrotask(loadBatch);
+  }, [load]);
   useEffect(() => {
     fetch("/api/trakt/status").then(r => r.json()).then(d => setTraktConnected(Boolean(d.connected)));
   }, []);
@@ -158,7 +161,7 @@ export default function BatchDetail({ batchId }: { batchId: number }) {
       {progress && <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">{progress}</p>}
       {!traktConnected && (
         <p className="mb-4 text-xs text-amber-600 dark:text-amber-300">
-          Aby synchronizować z Trakt, połącz konto w zakładce „Połączenia".
+          Aby synchronizować z Trakt, połącz konto w zakładce „Połączenia&quot;.
         </p>
       )}
 
@@ -249,17 +252,22 @@ function ManualMatchModal({ item, onClose, onMatched }: { item: MediaItem; onClo
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
 
-  async function search() {
-    setLoading(true);
+  const search = useCallback(async () => {
     const params = new URLSearchParams({ q: query });
     if (year) params.set("year", year);
     const res = await fetch(`/api/trakt/search?${params.toString()}`);
     const data = await res.json();
-    setResults(data.results ?? []);
     setLoading(false);
-  }
+    setResults(data.results ?? []);
+  }, [query, year]);
 
-  useEffect(() => { search(); }, []);
+  useEffect(() => {
+    async function runSearch() {
+      await search();
+    }
+
+    void runSearch();
+  }, [search]);
 
   async function selectResult(r: SearchResult) {
     await fetch(`/api/media-items/${item.id}`, {

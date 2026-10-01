@@ -6,6 +6,8 @@
     "name": "Marcin77",
     "email": "mwas@o2.pl"
   },
+  "license": "MIT",
+  "homepage": "https://github.com/marcin77/CineBridge",
   "private": true,
   "main": "electron/main.js",
   "scripts": {

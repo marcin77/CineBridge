@@ -1,5 +1,63 @@
 # Changelog
 
+## [1.5.0]
+
+### ✨ Dodano
+- Dopasowywanie TMDB dla sezonów seriali antologicznych (np. serii
+  "Monster") na podstawie podtytułu sezonu, roku sezonu i reżysera
+  przypisanego do konkretnego sezonu (pobieranego bezpośrednio z Filmweb).
+- Weryfikacja dopasowania po reżyserze uwzględnia teraz rok produkcji —
+  eliminuje błędne dopasowania, gdy ta sama ekipa realizuje różne,
+  niepowiązane produkcje.
+- Dodatkowa strategia wyszukiwania uwzględniająca warianty liczby
+  pojedynczej/mnogiej tytułu.
+- Dane logowania Filmweb przeniesione do Ustawień (Electron).
+- Baner aktualizacji (`UpdateBanner`) na górze nagłówka, sticky razem z nawigacją.
+  Pokazuje stany: dostępna wersja, pobieranie z procentami, gotowa do instalacji
+  oraz błąd pobierania z przyciskiem „Ponów".
+- Baner w stanie „dostępna" można zamknąć. Wersja jest zapamiętywana w `localStorage`,
+  więc baner wraca dopiero przy kolejnej wersji. Stan pobierania, instalacji i błędu
+  nie daje się zamknąć.
+- Przycisk aktualizacji w prawym górnym rogu zastępuje ikonę 14 px z kropką.
+  To teraz kolorowa pigułka z tekstem („Aktualizacja 1.5.0", „Pobieranie 42%",
+  „Zainstaluj") i pulsującą kropką przy nowej wersji.
+- Obsługa błędu pobierania w nawigacji i banerze (czerwony wariant). Błąd jest
+  pokazywany tylko wtedy, gdy znana jest wersja do pobrania, więc brak internetu
+  przy sprawdzaniu aktualizacji nie wywołuje fałszywego alarmu.
+
+### 🎨 Zmieniono
+- Rok przypisywany do sezonu/odcinka pochodzi teraz z faktycznego roku
+  emisji sezonu, zamiast być dziedziczony z roku premiery całego serialu.
+- Tolerancja roku przy weryfikacji dopasowania sezonu jest teraz
+  kontekstowa: dokładna zgodność przy wyborze spośród wielu kandydatów,
+  ±1 rok przy walidacji już potwierdzonego serialu.
+- Pobieranie ocen odcinków w ramach sezonu działa współbieżnie zamiast
+  sekwencyjnie — szybsze skanowanie.
+- Pasek postępu podczas skanowania sezonów/odcinków pokazuje teraz
+  spójną, rosnącą liczbę przeskanowanych seriali zamiast resetować się
+  przy każdym serialu z osobna.
+- Seriale z sezonami są reskanowane przy każdym uruchomieniu (wykrywanie
+  nowych ocen sezonów/odcinków); seriale bez sezonów są pomijane, gdy
+  ich ocena się nie zmieniła.
+- Dodatkowy okresowy reskan seriali co 6h jako zabezpieczenie przed
+  przeoczeniem nowych ocen.
+- Kosmetyczne poprawki w kodzie.
+
+### 🐛 Naprawiono
+- Dopasowywanie reżysera po nazwisku nie zawodzi już przy różnicach
+  w formatowaniu inicjałów.
+- Sezony antologii wydane rok po roku nie są już mylone ze sobą.
+- Dopasowanie sezonu antologii z niekompletnymi danymi obsady na
+  Filmwebie nie polega już błędnie na reżyserach całego serialu.
+
+### Znane ograniczenia (udokumentowane, celowo nienaprawiane)
+- Filmweb API może zwracać inny polski tytuł w zależności od historii
+  konta zalogowanego użytkownika — nie do skorygowania automatycznie,
+  wymaga ręcznej poprawki danych.
+- Bardzo długie seriale (np. codzienne) są odrzucane przez endpoint
+  płaskiej listy odcinków Filmweb („episodeCount too big”) — pomijane
+  bez wpływu na resztę synchronizacji.
+
 ## [1.4.0]
 
 ### ✨ Dodano

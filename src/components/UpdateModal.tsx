@@ -85,7 +85,7 @@ export default function UpdateModal({
         </div>
 
         {/* Ostrzeżenie o scraperze */}
-        {scraperRunning && (status === "available" || status === "downloading") && (
+        {scraperRunning && (status === "available" || status === "downloading" || status === "downloaded") && (
           <div className="mb-4 flex items-start gap-2 rounded-xl border border-amber-300/50 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-300">
             <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" />
             <span>
@@ -142,7 +142,7 @@ export default function UpdateModal({
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-400 px-4 py-2.5 text-sm font-medium text-slate-950 transition hover:bg-emerald-300"
           >
             <Download size={15} />
-            Pobierz aktualizację
+            {status === "error" ? "Spróbuj ponownie" : "Pobierz aktualizację"}
           </button>
         )}
       </div>

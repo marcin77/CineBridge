@@ -104,104 +104,143 @@ export default function BatchExportPanel({ batchId, filename }: Props) {
       .catch(() => setDiffInfo(null));
   }, [batchId]);
 
-  async function handleTmdbMatch() {
-    setMatching(true);
-    setMatchStats(null);
-    setMatchDone(false);
-    setMatchError(null);
-
-    let totalMatched = 0;
-    let totalFailed = 0;
-    let total = 0;
-
+ async function fetchWithRetry(
+  url: string,
+  maxRetries = 3,
+): Promise<{ ok: boolean; data: any }> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      let remaining = 1;
-
-      while (remaining > 0) {
-        const res = await fetch(`/api/import/${batchId}/tmdb-match`, {
-          method: "POST",
-        });
-        const data = await res.json();
-
-        if (!res.ok) {
-          setMatchError(data.error ?? "Błąd dopasowywania");
-          break;
-        }
-
-        totalMatched += data.matched;
-        totalFailed += data.failed;
-        remaining = data.remaining;
-
-        if (total === 0) {
-          total = totalMatched + totalFailed + remaining;
-        }
-
-        setMatchStats({
-          matched: totalMatched,
-          failed: totalFailed,
-          remaining,
-          total,
-        });
-
-        if (data.matched === 0 && data.failed === 0) break;
-        if (remaining > 0) await new Promise((r) => setTimeout(r, 300));
-      }
-
-      // Po zakończeniu matchingu filmów/seriali — pobierz odcinki
-      const epStatusRes = await fetch(
-        `/api/import/${batchId}/tmdb-episodes/status`,
-      );
-      if (epStatusRes.ok) {
-        const epStatus = await epStatusRes.json();
-        const epTotal = epStatus.remaining ?? 0;
-        if (epTotal > 0) {
-          total = total + epTotal;
-          setMatchStats((prev) => (prev ? { ...prev, total } : null));
-        }
-      }
-
-      let epRemaining = 1;
-      while (epRemaining > 0) {
-        const epRes = await fetch(`/api/import/${batchId}/tmdb-episodes`, {
-          method: "POST",
-        });
-        const epData = await epRes.json();
-        if (!epRes.ok) break;
-        epRemaining = epData.remaining ?? 0;
-        setMatchStats((prev) =>
-          prev
-            ? {
-                ...prev,
-                matched: prev.matched + (epData.updated ?? 0),
-                failed: prev.failed + (epData.failed ?? 0),
-              }
-            : null,
-        );
-        if (epData.remaining === 0) break;
-        if (epRemaining > 0) await new Promise((r) => setTimeout(r, 300));
-      }
-
-      setMatchDone(true);
-
-      // Odśwież diff po zakończeniu matchingu
-      fetch(`/api/import/${batchId}/diff`)
-        .then((r) => r.json())
-        .then((d: DiffInfo) => setDiffInfo(d))
-        .catch(() => null);
+      const res = await fetch(url, { method: "POST" });
+      const data = await res.json();
+      if (res.ok) return { ok: true, data };
+      if (attempt === maxRetries) return { ok: false, data };
+      await new Promise((r) => setTimeout(r, 1000 * attempt));
     } catch {
-      setMatchError("Błąd połączenia");
-    } finally {
-      setMatching(false);
+      if (attempt === maxRetries) return { ok: false, data: null };
+      await new Promise((r) => setTimeout(r, 1000 * attempt));
     }
   }
+  return { ok: false, data: null };
+}
+
+async function handleTmdbMatch() {
+  setMatching(true);
+  setMatchStats(null);
+  setMatchDone(false);
+  setMatchError(null);
+
+  let totalMatched = 0;
+  let totalFailed = 0;
+  let total = 0;
+
+  try {
+    let remaining = 1;
+    let safetyCounter = 0;
+    const SAFETY_LIMIT = 500; // ~10000 pozycji przy CHUNK=20 — awaryjny limit
+
+    while (remaining > 0 && safetyCounter < SAFETY_LIMIT) {
+      safetyCounter++;
+      const { ok, data } = await fetchWithRetry(`/api/import/${batchId}/tmdb-match`);
+
+      if (!ok) {
+        setMatchError(
+          data?.error ?? "Błąd dopasowywania — spróbowano 3x bezskutecznie. Kliknij ponownie, żeby kontynuować.",
+        );
+        break;
+      }
+
+      totalMatched += data.matched;
+      totalFailed += data.failed;
+      remaining = data.remaining;
+
+      if (total === 0) {
+        total = totalMatched + totalFailed + remaining;
+      }
+
+      setMatchStats({
+        matched: totalMatched,
+        failed: totalFailed,
+        remaining,
+        total,
+      });
+
+      if (data.matched === 0 && data.failed === 0 && remaining > 0) {
+        // Nic się nie przetworzyło mimo że coś zostało — unikaj wiecznej pętli.
+        setMatchError("Przetwarzanie utknęło — kliknij ponownie, żeby kontynuować.");
+        break;
+      }
+      if (remaining > 0) await new Promise((r) => setTimeout(r, 300));
+    }
+
+    if (safetyCounter >= SAFETY_LIMIT) {
+      setMatchError("Osiągnięto limit bezpieczeństwa — kliknij ponownie, żeby kontynuować.");
+    }
+
+    // Po zakończeniu matchingu filmów/seriali — pobierz odcinki
+    const epStatusRes = await fetch(`/api/import/${batchId}/tmdb-episodes/status`);
+    if (epStatusRes.ok) {
+      const epStatus = await epStatusRes.json();
+      const epTotal = epStatus.remaining ?? 0;
+      if (epTotal > 0) {
+        total = total + epTotal;
+        setMatchStats((prev) => (prev ? { ...prev, total } : null));
+      }
+    }
+
+    let epRemaining = 1;
+    let epSafetyCounter = 0;
+    while (epRemaining > 0 && epSafetyCounter < SAFETY_LIMIT) {
+      epSafetyCounter++;
+      const { ok, data: epData } = await fetchWithRetry(`/api/import/${batchId}/tmdb-episodes`);
+
+      if (!ok) {
+        setMatchError(
+          epData?.error ?? "Błąd dopasowywania odcinków — spróbowano 3x bezskutecznie. Kliknij ponownie.",
+        );
+        break;
+      }
+
+      epRemaining = epData.remaining ?? 0;
+      setMatchStats((prev) =>
+        prev
+          ? {
+              ...prev,
+              matched: prev.matched + (epData.updated ?? 0),
+              failed: prev.failed + (epData.failed ?? 0),
+            }
+          : null,
+      );
+
+      if ((epData.updated ?? 0) === 0 && (epData.failed ?? 0) === 0 && epRemaining > 0) {
+        setMatchError("Przetwarzanie odcinków utknęło — kliknij ponownie, żeby kontynuować.");
+        break;
+      }
+      if (epRemaining > 0) await new Promise((r) => setTimeout(r, 300));
+    }
+
+    setMatchDone(true);
+
+    fetch(`/api/import/${batchId}/diff`)
+      .then((r) => r.json())
+      .then((d: DiffInfo) => setDiffInfo(d))
+      .catch(() => null);
+  } catch {
+    setMatchError("Błąd połączenia");
+  } finally {
+    setMatching(false);
+  }
+}
 
   const matchPercent = matchStats
-    ? Math.round(
+  ? Math.min(
+      100,
+      Math.round(
         ((matchStats.matched + matchStats.failed) /
-          Math.max(matchStats.total, 1)) *
+          Math.max(matchStats.matched + matchStats.failed + matchStats.remaining, 1)) *
           100,
-      )
-    : 0;
+      ),
+    )
+  : 0;
 
   async function handleClearTmdbCache() {
     if (

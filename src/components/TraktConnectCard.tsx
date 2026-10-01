@@ -27,8 +27,12 @@ export default function TraktConnectCard() {
   }
 
   useEffect(() => {
-    loadStatus();
+    const statusRequest = setTimeout(() => {
+      void loadStatus();
+    }, 0);
+
     return () => {
+      clearTimeout(statusRequest);
       if (pollRef.current) clearInterval(pollRef.current);
     };
   }, []);

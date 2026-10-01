@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import FilmwebSyncPanel from "./FilmwebSyncPanel";
 import ScraperClient from "./ScraperClient";
 import { RefreshCw, Download } from "lucide-react";
@@ -10,11 +10,11 @@ interface Props {
 }
 
 export default function ScraperPageClient({ scriptContent }: Props) {
-  const [isElectron, setIsElectron] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    setIsElectron(!!(window as any).electronAPI);
-  }, []);
+  const isElectron = useSyncExternalStore(
+    () => () => {},
+    () => !!(window as any).electronAPI,
+    () => null,
+  );
 
   if (isElectron === null) {
     return (

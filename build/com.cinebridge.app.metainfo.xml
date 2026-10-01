@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.cinebridge.app</id>
+  <name>CineBridge</name>
+  <summary>Migruj historię filmową z Filmweb</summary>
+  <description>
+    <p>
+      Scraper Filmweb + eksport do Letterboxd, Trakt, Simkl i innych serwisów.
+      Automatycznie pobiera oceny, komentarze, watchlist, ulubione i listy.
+    </p>
+  </description>
+  <license>MIT</license>
+  <url type="homepage">https://github.com/marcin77/CineBridge</url>
+  <url type="bugtracker">https://github.com/marcin77/CineBridge/issues</url>
+  <categories>
+    <category>AudioVideo</category>
+    <category>Video</category>
+  </categories>
+  <releases>
+    <release version="1.4.0" date="2026-09-16">
+      <description>
+        <p>Masowe zarządzanie importami, eksport tylko nowych pozycji, naprawa Trakt CSV watchlisty.</p>
+      </description>
+    </release>
+    <release version="1.3.0" date="2026-09-11">
+      <description>
+        <p>Eksport komentarzy do sezonów i odcinków, Simkl LastEpWatched, naprawa dopasowania TMDB.</p>
+      </description>
+    </release>
+    <release version="1.2.0" date="2026-09-01">
+      <description>
+        <p>Eksport Letterboxd ZIP, Universal CSV, naprawa eksportu ulubionych.</p>
+      </description>
+    </release>
+  </releases>
+  <content_rating type="oars-1.1"/>
+</component>

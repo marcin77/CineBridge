@@ -61,13 +61,15 @@ export async function POST(req: Request) {
       imdbId:        item.imdbId ?? null,
       tmdbId:        item.tmdbId ?? null,
       listName:      item.listName ?? null,
-      listId:        item.listId ?? null,      // DODANE
-      listStatus:    item.listStatus ?? null,  // DODANE
-      favorite:      item.favorite ?? null,    // DODANE
-      parentShowId:  item.parentShowId ?? null,      // <- NOWE
-      seasonNumber:  item.seasonNumber ?? null,      // <- NOWE
-      episodeNumber: item.episodeNumber ?? null,     // <- NOWE
-      episodeTitle:  item.episodeTitle ?? null,      // <- NOWE
+      listId:        item.listId ?? null,
+      listStatus:    item.listStatus ?? null,
+      favorite:      item.favorite ?? null,
+      parentShowId:  item.parentShowId ?? null,
+      seasonNumber:  item.seasonNumber ?? null,
+      episodeNumber: item.episodeNumber ?? null,
+      episodeTitle:  item.episodeTitle ?? null,
+      seasonTitle:   item.seasonTitle ?? null,
+      seasonYear:    item.seasonYear ?? null,
       matchStatus:   "ready" as const,
     }));
 

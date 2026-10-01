@@ -4,6 +4,7 @@ const COLS = [
   "rated_at", "watched_at", "comment", "list_name",
   "list_id", "list_status", "favorite",
   "parent_show_id", "season_number", "episode_number", "episode_title",
+  "season_title", "season_year",
 ];
 
 function csvEscape(val) {

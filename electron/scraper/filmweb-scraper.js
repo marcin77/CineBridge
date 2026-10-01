@@ -204,15 +204,17 @@ async buildItem(id, type, category, opts = {}) {
       const avg = elapsed / processed;
       const eta = (total - processed) * avg;
 
-      this.onProgress({
-        phase,
-        current: processed,
-        total,
-        percent: Math.round((processed / total) * 100),
-        elapsed: formatDuration(elapsed),
-        eta: formatDuration(eta),
-        message: `[${phase}] ${processed}/${total} | ETA: ~${formatDuration(eta)} | concurrency: ${this.client.currentConcurrency}`,
-      });
+      if (opts.reportProgress !== false) {
+        this.onProgress({
+          phase,
+          current: processed,
+          total,
+          percent: Math.round((processed / total) * 100),
+          elapsed: formatDuration(elapsed),
+          eta: formatDuration(eta),
+          message: `[${phase}] ${processed}/${total} | ETA: ~${formatDuration(eta)} | concurrency: ${this.client.currentConcurrency}`,
+        });
+      }
     }
 
     // Końcowy checkpoint
@@ -575,13 +577,34 @@ async buildItem(id, type, category, opts = {}) {
     }
 
     // 2. Skanuj tylko seriale, których ocena/data zmieniła się od ostatniego skanu
+    // Seriale z sezonami są zawsze reskanowane (brak zbiorczego API ocen sezonów)
+    const FORCE_RESCAN_AGE_MS = 24 * 60 * 60 * 1000;
     const toScan = shows.filter((show) => {
+        // ── TYMCZASOWY FILTR TESTOWY — USUŃ PO TEŚCIE ──
+//  if (String(show.filmweb_id) !== "862354") return false;
+
+//   const meta = this.db.showScanMeta[String(show.filmweb_id)];
+//   if (!meta) return true;
+//   if (
+//     String(meta.rate ?? "") !== String(show.user_rating ?? "") ||
+//     (meta.ratedAt ?? "") !== (show.rated_at ?? "")
+//   ) return true;
+//   if (meta.hasSeasons === false) return false;
+//   return true;
+// });
       const meta = this.db.showScanMeta[String(show.filmweb_id)];
+      // Nigdy nie skanowany → skanuj
       if (!meta) return true;
-      return (
+      // Zmiana oceny serialu → zawsze reskanuj
+      if (
         String(meta.rate ?? "") !== String(show.user_rating ?? "") ||
         (meta.ratedAt ?? "") !== (show.rated_at ?? "")
-      );
+      ) return true;
+      // Serial bez sezonów → pomiń (odcinki flat nie mają ocen sezonów)
+      if (meta.hasSeasons === false) return false;
+      // Serial z sezonami (lub nieznanym statusem) → reskanuj zawsze
+      // + co 24h jako siatka bezpieczeństwa dla wykrycia nowych ocen
+      return true;
     });
 
     this.stats.showsScanned = toScan.length;
@@ -632,9 +655,21 @@ async buildItem(id, type, category, opts = {}) {
       list_status: "",
       favorite: "nie",
       parent_show_id: showId,
+      season_title: "",
+      season_year: "",  
     };
 
 const seasons = await this.client.getSeasons(showId);
+// ── TYMCZASOWY DEBUG: sprawdź czy seasons już ma tytuł/podtytuł ──
+// if (seasons.length > 0) {
+//   console.log(`[DEBUG seasons raw] showId=${showId}`, JSON.stringify(seasons[0], null, 2));
+// }
+if (seasons.length > 0) {
+  const testInfo = await this.client.getTitleInfo(seasons[0].id);
+  // console.log(`[DEBUG season getTitleInfo]`, JSON.stringify(testInfo, null, 2));
+  const testPreview = await this.client.getTitlePreview(seasons[0].id);
+  // console.log(`[DEBUG season getTitlePreview]`, JSON.stringify(testPreview, null, 2));
+}
 
 // ── Fallback: serial bez podziału na sezony (mini_serial, flat episodes) ──
 if (seasons.length === 0) {
@@ -666,13 +701,14 @@ if (seasons.length === 0) {
       };
       this.stats.episodesAdded++;
     },
-    { phase: "odcinki", chunkSize: 10 },
+        { phase: "odcinki", chunkSize: 10, reportProgress: false },
   );
 
   this.db.showScanMeta[String(showId)] = {
     rate: show.user_rating,
     ratedAt: show.rated_at,
     scannedAt: Date.now(),
+    hasSeasons: false,
   };
   return;
 }
@@ -680,6 +716,19 @@ if (seasons.length === 0) {
 // ── Standardowa ścieżka: serial z sezonami ────────────────────────────────
 for (const season of seasons) {
   this.checkAbort();
+
+  const seasonTitleText = season.title?.text || null;
+  const seasonYearStart = season.yearStart || null;
+
+  let seasonDirectors = [];
+  try {
+    seasonDirectors = await this.client.getSeasonDirectors(showId, season.seasonNumber, show.year);
+  } catch (e) {
+    this.log(`[odcinki] Błąd pobierania reżyserów sezonu ${season.seasonNumber} serialu ${showId}: ${e.message} — fallback do reżysera serialu`);
+  }
+  const seasonDirectorString = seasonDirectors.length > 0
+    ? seasonDirectors.join("; ")
+    : show.director;
 
   // Ocena sezonu
   const sVote = await this.client.getSeasonVote(this.userId, season.id);
@@ -691,6 +740,10 @@ for (const season of seasons) {
       ...base,
       type: "season",
       filmweb_id: season.id,
+      director: seasonDirectorString,
+      year: seasonYearStart || show.year, // ← NOWE: rok sezonu, fallback do roku show'a
+      season_title: seasonTitleText,
+      season_year: seasonYearStart,
       user_rating: sVote.rate,
       rated_at: date,
       watched_at: date,
@@ -704,36 +757,43 @@ for (const season of seasons) {
 
   // Oceny odcinków
   const episodes = await this.client.getSeasonEpisodes(showId, season.seasonNumber);
-  for (const ep of episodes) {
-    this.checkAbort();
-    const eVote = await this.client.getEpisodeVote(this.userId, ep.id);
-    if (!eVote || !(eVote.rate > 0)) continue;
+  await this.processInChunks(
+    episodes,
+    async (ep) => {
+      this.checkAbort();
+      const eVote = await this.client.getEpisodeVote(this.userId, ep.id);
+      if (!eVote || !(eVote.rate > 0)) return;
 
-    const info = await this.client.getEpisodeInfo(ep.id);
-    const date = eVote.viewDate
-      ? formatDate(eVote.viewDate)
-      : formatTimestamp(eVote.timestamp);
+      const info = await this.client.getEpisodeInfo(ep.id);
+      const date = eVote.viewDate ? formatDate(eVote.viewDate) : formatTimestamp(eVote.timestamp);
 
-    this.db.itemsMap[this.getItemKey("episode", ep.id, "watched")] = {
-      ...base,
-      type: "episode",
-      filmweb_id: ep.id,
-      user_rating: eVote.rate,
-      rated_at: date,
-      watched_at: date,
-      comment: eVote.comment || "",
-      season_number: ep.seasonNumber,
-      episode_number: ep.episodeNumber,
-      episode_title: info?.title?.title || "",
-    };
-    this.stats.episodesAdded++;
-  }
+      this.db.itemsMap[this.getItemKey("episode", ep.id, "watched")] = {
+        ...base,
+        type: "episode",
+        filmweb_id: ep.id,
+        director: seasonDirectorString,
+        year: seasonYearStart || show.year,
+        season_title: seasonTitleText,
+        season_year: seasonYearStart,
+        user_rating: eVote.rate,
+        rated_at: date,
+        watched_at: date,
+        comment: eVote.comment || "",
+        season_number: ep.seasonNumber,
+        episode_number: ep.episodeNumber,
+        episode_title: info?.title?.title || "",
+      };
+      this.stats.episodesAdded++;
+    },
+    { phase: "odcinki", chunkSize: 10, reportProgress: false },
+  );
 }
 
 this.db.showScanMeta[String(showId)] = {
   rate: show.user_rating,
   ratedAt: show.rated_at,
   scannedAt: Date.now(),
+  hasSeasons: seasons.length > 0,
 };
 
   }

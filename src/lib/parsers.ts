@@ -24,6 +24,8 @@ export interface ParsedItem {
   seasonNumber: number | null; 
   episodeNumber: number | null;
   episodeTitle: string | null;
+  seasonTitle: string | null;   // ← NOWE
+  seasonYear: number | null; 
 }
 
 export interface ParseResult {
@@ -54,6 +56,8 @@ const ALIASES: Record<string, string[]> = {
   seasonNumber:  ["season_number", "seasonnumber", "season", "sezon"],
   episodeNumber: ["episode_number", "episodenumber", "episode", "odcinek"],
   episodeTitle:  ["episode_title", "episodetitle", "tytul_odcinka"],
+  seasonTitle:   ["season_title", "seasontitle", "tytul_sezonu"],
+  seasonYear:    ["season_year", "seasonyear", "rok_sezonu"],
 };
 
 // helper
@@ -178,6 +182,8 @@ function rowsToItems(rows: Record<string, string>[]): { items: ParsedItem[]; ski
       seasonNumber:  parseInt10(pickValue(row, ALIASES.seasonNumber)),
       episodeNumber: parseInt10(pickValue(row, ALIASES.episodeNumber)),
       episodeTitle:  pickValue(row, ALIASES.episodeTitle),
+      seasonTitle:   pickValue(row, ALIASES.seasonTitle),
+      seasonYear:    parseInt10(pickValue(row, ALIASES.seasonYear)),
     });
   }
   return { items, skipped };

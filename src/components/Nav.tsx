@@ -4,10 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Film, LayoutDashboard, Upload, FileDown,
-  BookOpen, Settings, Info, Download,
+  BookOpen, Settings, Info, Download, AlertTriangle,
 } from "lucide-react";
 import AboutModal from "./AboutModal";
 import UpdateModal from "./UpdateModal";
+import UpdateBanner from "./UpdateBanner";
 import ThemeToggle from "./ThemeToggle";
 import { useState } from "react";
 import { useUpdater } from "@/hooks/use-updater";
@@ -28,11 +29,23 @@ export default function Nav() {
   const { status, updateInfo, progress, errorMessage, downloadUpdate, installUpdate } = useUpdater();
   const { running } = useScraperSync();
 
-  const hasUpdate = status === "available" || status === "downloading" || status === "downloaded";
+  // błąd pobierania konkretnej wersji (nie błąd sprawdzania, np. offline)
+  const updateFailed = status === "error" && !!updateInfo;
+  const hasUpdate =
+    status === "available" || status === "downloading" || status === "downloaded" || updateFailed;
 
   return (
     <>
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/80 backdrop-blur dark:border-white/10 dark:bg-slate-950/80">
+        <UpdateBanner
+          status={status}
+          updateVersion={updateInfo?.version ?? null}
+          progress={progress}
+          scraperRunning={running}
+          onDownload={downloadUpdate}
+          onInstall={installUpdate}
+          onDetails={() => setUpdateOpen(true)}
+        />
         <div className="mx-auto flex max-w-6xl items-center gap-6 px-6 py-3">
           {/* Logo */}
           <Link href="/" className="mr-2 flex items-center gap-2 font-semibold text-slate-900 dark:text-white">
@@ -68,11 +81,26 @@ export default function Nav() {
             {hasUpdate && (
               <button
                 onClick={() => setUpdateOpen(true)}
-                className="relative flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-emerald-600 transition hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-400/10"
-                title="Dostępna aktualizacja"
+                className={`relative flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                  updateFailed
+                    ? "bg-rose-500 text-white hover:bg-rose-400"
+                    : "bg-emerald-400 text-slate-950 hover:bg-emerald-300"
+                }`}
+                title={updateFailed ? "Błąd pobierania aktualizacji" : "Dostępna aktualizacja"}
               >
-                <Download size={14} />
-                <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-emerald-400" />
+                {updateFailed ? <AlertTriangle size={14} /> : <Download size={14} />}
+                <span>
+                  {status === "available" && `Aktualizacja ${updateInfo?.version ?? ""}`}
+                  {status === "downloading" && `Pobieranie ${progress?.percent ?? 0}%`}
+                  {status === "downloaded" && "Zainstaluj"}
+                  {updateFailed && "Błąd aktualizacji"}
+                </span>
+                {status === "available" && (
+                  <span className="absolute -right-1 -top-1 flex h-2.5 w-2.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75" />
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-rose-500" />
+                  </span>
+                )}
               </button>
             )}
             <ThemeToggle />

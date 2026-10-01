@@ -66,9 +66,15 @@ appImage:
 
 deb:
   artifactName: CineBridge-${version}-${arch}.deb
+  afterInstall: build/postinst-icons.sh
+  afterRemove: build/postrm-icons.sh
+  fpm:
+    - "--deb-field=License: MIT"
 
 rpm:
   artifactName: CineBridge-${version}-${arch}.rpm
+  fpm:
+    - "--rpm-tag=%license LICENSE" 
 
 win:
   target:
@@ -97,3 +103,10 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
+  license: LICENSE  # pokaże treść licencji podczas instalacji
+
+extraFiles:
+  - from: "build/icons"
+    to: "icons"
+    filter:
+      - "*.png"

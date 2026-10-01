@@ -56,7 +56,9 @@ interface ScraperSyncState {
 const ScraperSyncContext = createContext<ScraperSyncState | null>(null);
 
 export function ScraperSyncProvider({ children }: { children: ReactNode }) {
-  const [isElectron, setIsElectron] = useState(false);
+  const [isElectron] = useState(
+    () => typeof window !== "undefined" && !!(window as any).electronAPI,
+  );
 
   const [email, setEmail]           = useState("");
   const [password, setPassword]     = useState("");
@@ -120,15 +122,15 @@ export function ScraperSyncProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    const hasElectronApi = !!(window as any).electronAPI;
-    setIsElectron(hasElectronApi);
+    const hasElectronApi = isElectron;
 
     if (!hasElectronApi) return;
     const api = (window as any).electronAPI;
 
     attachListeners();
 
-    refreshStatus().then((s) => {
+    api.getScraperStatus().then((s: Status) => {
+      setStatus(s);
       if (s?.running) {
         setRunning(true);
         if (s.lastProgress) {
@@ -148,7 +150,7 @@ export function ScraperSyncProvider({ children }: { children: ReactNode }) {
       }
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isElectron]);
 
   async function handleStart() {
     if (!email || !password) return;

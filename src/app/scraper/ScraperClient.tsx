@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Copy, Check, Download, ExternalLink, AlertTriangle, Info, ChevronRight, Code2 } from "lucide-react";
 
 interface Props {
@@ -89,7 +90,7 @@ export default function ScraperClient({ scriptContent }: Props) {
               <code className="rounded bg-slate-100 px-1 text-xs text-slate-900 dark:bg-white/10 dark:text-white">filmweb_export_YYYY-MM-DD.csv</code>.
             </>,
             <><strong className="text-slate-900 dark:text-white">Wgraj pobrany plik</strong> na stronie{" "}
-              <a href="/import" className="text-emerald-600 hover:underline dark:text-emerald-300">Import</a>{" "}
+              <Link href="/import" className="text-emerald-600 hover:underline dark:text-emerald-300">Import</Link>{" "}
               i pobierz eksport dla wybranego serwisu.
             </>,
           ].map((step, i) => (
