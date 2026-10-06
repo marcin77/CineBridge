@@ -3,8 +3,8 @@
 ## [1.5.1]
 
 ### ✨ Dodano
-- sekcja „Co nowego" z lista zmian
-- Przycisk „Sprawdź aktualizacje"
+- Sekcje „Co nowego" z lista zmian.
+- Przycisk „Sprawdź aktualizacje".
 
 ### 🐛 Naprawiono
 - **Trakt ZIP — antologie TMDB**: oceny, historia
