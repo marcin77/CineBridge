@@ -74,7 +74,7 @@ deb:
 rpm:
   artifactName: CineBridge-${version}-${arch}.rpm
  # fpm:
- #   - "--rpm-tag=%license LICENSE" 
+ #     - "--rpm-tag=%license LICENSE" 
 
 win:
   target:

@@ -3,6 +3,7 @@
 import { X, Download, RefreshCw, CheckCircle2, AlertTriangle } from "lucide-react";
 import { useEffect } from "react";
 import type { UpdaterStatus } from "@/hooks/use-updater";
+import { releaseNotesToText, type ReleaseNotes } from "@/lib/release-notes";
 
 const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? "dev";
 
@@ -13,6 +14,7 @@ interface Props {
   updateVersion: string | null;
   progress: { percent: number } | null;
   errorMessage: string | null;
+  releaseNotes: ReleaseNotes;
   scraperRunning: boolean;
   onDownload: () => void;
   onInstall: () => void;
@@ -25,6 +27,7 @@ export default function UpdateModal({
   updateVersion,
   progress,
   errorMessage,
+  releaseNotes,
   scraperRunning,
   onDownload,
   onInstall,
@@ -36,6 +39,8 @@ export default function UpdateModal({
     if (open) document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
   }, [open, onClose]);
+
+  const notesText = releaseNotesToText(releaseNotes);
 
   if (!open) return null;
 
@@ -82,6 +87,27 @@ export default function UpdateModal({
               {updateVersion ?? "?"}
             </span>
           </div>
+        </div>
+
+        {/* Co nowego */}
+        <div className="mb-4">
+          <div className="mb-1.5 text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
+            Co nowego
+          </div>
+          {notesText ? (
+            <div className="max-h-48 overflow-y-auto whitespace-pre-line rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
+              {notesText}
+            </div>
+          ) : (
+            <a
+              href="https://github.com/marcin77/CineBridge/releases"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-emerald-600 underline underline-offset-2 dark:text-emerald-400"
+            >
+              Zobacz listę zmian na GitHubie
+            </a>
+          )}
         </div>
 
         {/* Ostrzeżenie o scraperze */}

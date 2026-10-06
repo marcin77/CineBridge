@@ -30,6 +30,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   loadCredentials:    ()                => ipcRenderer.invoke("credentials:load"),
   clearCredentials:   ()                => ipcRenderer.invoke("credentials:clear"),
 
+    // Wersja aplikacji (z package.json spakowanej paczki, nie z bundla Next)
+  getAppVersion: () => ipcRenderer.invoke("app:getVersion"),
+  
   // Auto-updater
   checkForUpdates:    () => ipcRenderer.invoke("updater:check"),
   downloadUpdate:     () => ipcRenderer.invoke("updater:download"),

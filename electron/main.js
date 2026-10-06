@@ -1,10 +1,14 @@
-const { app, BrowserWindow, shell, ipcMain, safeStorage } = require("electron");
+const { app, BrowserWindow, shell, ipcMain, safeStorage, dialog } = require("electron");
+const net = require("net");
 const { fork } = require("child_process");
 const path = require("path");
 const http = require("http");
 const fs = require("fs");
 const { autoUpdater } = require("electron-updater");
 
+const DEV_PORT = 3000;           // next dev
+const PREFERRED_PORT = 47831;    // produkcja: stały, nietypowy
+let PORT = DEV_PORT;             // ustawiany w whenReady
 
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
@@ -13,7 +17,38 @@ if (!gotTheLock) {
 
 let mainWindow = null;
 let nextServerProcess = null;
-const PORT = 3000;
+//const PORT = 3000;
+
+function isPortFree(port) {
+  return new Promise((resolve) => {
+    const srv = net.createServer();
+    srv.once("error", () => resolve(false));
+    srv.once("listening", () => srv.close(() => resolve(true)));
+    srv.listen(port, "127.0.0.1");
+  });
+}
+
+function getRandomFreePort() {
+  return new Promise((resolve, reject) => {
+    const srv = net.createServer();
+    srv.once("error", reject);
+    srv.listen(0, "127.0.0.1", () => {
+      const { port } = srv.address();
+      srv.close(() => resolve(port));
+    });
+  });
+}
+
+async function pickPort() {
+  // po aktualizacji stary serwer może jeszcze chwilę zwalniać port
+  for (let i = 0; i < 6; i++) {
+    if (await isPortFree(PREFERRED_PORT)) return PREFERRED_PORT;
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  const port = await getRandomFreePort();
+  console.warn(`[Electron] Port ${PREFERRED_PORT} zajęty, używam ${port}`);
+  return port;
+}
 
 // ─── Sciezki ──────────────────────────────────────────────────────────────────
 function getDatabasePath() {
@@ -150,6 +185,14 @@ StartupNotify=true
 // ─── Next.js server ───────────────────────────────────────────────────────────
 function startProductionServer() {
   return new Promise((resolve, reject) => {
+    let settled = false;
+    let exited = false;
+    const finish = (err) => {
+      if (settled) return;
+      settled = true;
+      err ? reject(err) : resolve();
+    };
+
     const nextServerScript = path.join(__dirname, "next-server.js");
     console.log("[Electron] Forkuje proces Next.js:", nextServerScript);
 
@@ -164,36 +207,34 @@ function startProductionServer() {
       silent: false,
     });
 
-    nextServerProcess.on("message", (msg) => {
-      if (msg === "ready") resolve();
-    });
-
+    nextServerProcess.on("message", (msg) => { if (msg === "ready") finish(); });
     nextServerProcess.on("error", (err) => {
       console.error("[Electron] Blad procesu Next.js:", err);
-      reject(err);
+      finish(err);
     });
-
     nextServerProcess.on("exit", (code) => {
+      exited = true;
       console.log("[Electron] Proces Next.js zakonczony, kod:", code);
+      finish(new Error(`Serwer Next.js zakończył się przed startem (kod ${code})`));
     });
 
-    waitForServer(resolve, reject);
+    waitForServer({ isAborted: () => exited }).then(() => finish(), finish);
   });
 }
 
-function waitForServer(resolve, reject, attempts = 0) {
-  const MAX_ATTEMPTS = 40;
-  if (attempts >= MAX_ATTEMPTS) {
-    reject(new Error("Next.js server nie odpowiedzial w wyznaczonym czasie"));
-    return;
-  }
-  const req = http.get(`http://localhost:${PORT}`, (res) => {
-    if (res.statusCode) resolve();
+function waitForServer({ maxAttempts = 40, isAborted = () => false } = {}) {
+  return new Promise((resolve, reject) => {
+    let attempts = 0;
+    const tryOnce = () => {
+      if (isAborted()) return reject(new Error("Serwer Next.js zakończył się przed startem"));
+      if (attempts++ >= maxAttempts) {
+        return reject(new Error("Next.js server nie odpowiedzial w wyznaczonym czasie"));
+      }
+      const req = http.get(`http://localhost:${PORT}`, (res) => { res.resume(); resolve(); });
+      req.on("error", () => setTimeout(tryOnce, 500));
+    };
+    tryOnce();
   });
-  req.on("error", () => {
-    setTimeout(() => waitForServer(resolve, reject, attempts + 1), 500);
-  });
-  req.end();
 }
 
 function waitForDevServer(resolve, reject, attempts = 0) {
@@ -325,6 +366,7 @@ function setupScraperIpc() {
     return scraperRunner;
   }
 
+  ipcMain.handle("app:getVersion", () => app.getVersion());
   ipcMain.handle("scraper:start", async (event, credentials) => {
     const { email, password, includeEpisodes } = credentials || {};
     if (!email || !password) {
@@ -533,15 +575,16 @@ if (process.platform === "linux") {
 
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 app.whenReady().then(async () => {
+  if (!gotTheLock) return;   // druga instancja nie startuje własnego serwera
   try {
     setupScraperIpc();
     setupCredentialsIpc();
     setupUpdaterIpc();
-
     setupLinuxAppImageIntegration();
 
     if (app.isPackaged) {
-      console.log("[Electron] Tryb produkcyjny - startuje forkowany serwer Next.js...");
+      PORT = await pickPort();
+      console.log(`[Electron] Tryb produkcyjny - serwer Next.js na porcie ${PORT}...`);
       await startProductionServer();
     } else {
       console.log("[Electron] Tryb dev - lacze sie z juz uruchomionym next dev...");
@@ -551,9 +594,13 @@ app.whenReady().then(async () => {
     createWindow();
   } catch (err) {
     console.error("[Electron] Blad startu aplikacji:", err);
+    dialog.showErrorBox("CineBridge — błąd startu", String(err.message || err));
     app.quit();
   }
 });
+
+process.on("SIGTERM", () => app.quit());
+process.on("SIGINT", () => app.quit());
 
 app.on("second-instance", () => {
   if (mainWindow) {

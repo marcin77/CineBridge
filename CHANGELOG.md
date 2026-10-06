@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.5.1]
+
+### ✨ Dodano
+- sekcja „Co nowego" z lista zmian
+- Przycisk „Sprawdź aktualizacje"
+
+### 🐛 Naprawiono
+- **Trakt ZIP — antologie TMDB**: oceny, historia
+  oglądania i komentarze dla sezonów
+  i odcinków serialu z różnym TMDB ID per sezon eksportowały się zawsze pod show-level ID i tytułem pierwszej instalacji, niezależnie
+  od tego, którego sezonu faktycznie dotyczył wpis. Dodano kolumny `season_show_tmdb_id` i `season_show_season_number`, wypełniane w `resolveSeason()` dla każdego sezonu z osobna (wcześniej zapisywane tylko dla `season_number === 1`). Eksport ZIP koryguje `show.title`/`show.ids.tmdb`/`season.number` (i analogicznie dla odcinków) na podstawie tych kolumn zamiast statycznego wiersza show-rodzica.
+- **Universal CSV**: dodano kolumnę `season_title`,
+  dziedziczoną przez wiersze `episode` z rodzica `season`.
+- Zabijanie serwera przy wyjściu, także przy
+  quitAndInstall: before-quit
+- 
+### 📝 Notatka
+- po aktualizacji do wersji z tą poprawką, dla już 
+  przetworzonych antologii wykonaj ręczny reset tmdb_searched i ponów matching, żeby dociągnąć season_show_tmdb_id".
+
 ## [1.5.0]
 
 ### ✨ Dodano

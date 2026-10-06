@@ -227,7 +227,10 @@ export default function BatchListManager({ batches }: Props) {
                         size={14}
                         className="shrink-0 text-slate-400 dark:text-slate-500"
                       />
-                      <span className="max-w-[200px] truncate">
+                      <span
+                        className="max-w-[360px] truncate"
+                        title={b.filename}
+                      >
                         {b.filename}
                       </span>
                       {isNewest && (

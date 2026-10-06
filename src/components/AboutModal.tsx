@@ -1,11 +1,17 @@
 "use client";
 
-import { X, Film, GitBranch, Coffee, Heart } from "lucide-react";
+import { X, Film, GitBranch, Coffee, Heart, RefreshCw, Info } from "lucide-react";
 import { useEffect } from "react";
+import type { UpdaterStatus } from "@/hooks/use-updater";
 
 interface Props {
   open: boolean;
   onClose: () => void;
+  status: UpdaterStatus;
+  updateVersion: string | null;
+  checkError: string | null;
+  onCheck: () => void;
+  onShowUpdate: () => void;
 }
 
 const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? "dev";
@@ -17,7 +23,15 @@ const DONATION_LINKS = [
   { label: "PayPal", href: "https://paypal.me/MartinSnow", icon: Heart },
 ];
 
-export default function AboutModal({ open, onClose }: Props) {
+export default function AboutModal({
+  open,
+  onClose,
+  status,
+  updateVersion,
+  checkError,
+  onCheck,
+  onShowUpdate,
+}: Props) {
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -25,6 +39,15 @@ export default function AboutModal({ open, onClose }: Props) {
     if (open) document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
   }, [open, onClose]);
+
+  const busy = status === "checking" || status === "downloading";
+  let statusText = "";
+  if (status === "checking") statusText = "Sprawdzanie…";
+  else if (status === "available") statusText = `Dostępna wersja ${updateVersion}`;
+  else if (status === "downloading") statusText = "Pobieranie aktualizacji…";
+  else if (status === "downloaded") statusText = `Wersja ${updateVersion} gotowa do instalacji`;
+  else if (checkError) statusText = checkError;
+  else if (status === "not-available") statusText = "Masz najnowszą wersję";
 
   if (!open) return null;
 
@@ -53,7 +76,18 @@ export default function AboutModal({ open, onClose }: Props) {
             <div className="font-semibold text-slate-900 dark:text-white">
               Cine<span className="text-emerald-500 dark:text-emerald-400">Bridge</span>
             </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400">wersja {APP_VERSION}</div>
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+              wersja {APP_VERSION}
+              <a
+                href="https://github.com/marcin77/CineBridge/releases"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Lista zmian"
+                className="text-slate-400 hover:text-emerald-500"
+              >
+                <Info size={13} />
+              </a>
+            </div>
           </div>
         </div>
 
@@ -74,6 +108,31 @@ export default function AboutModal({ open, onClose }: Props) {
               <span className="text-slate-900 dark:text-white">{value}</span>
             </div>
           ))}
+        </div>
+
+        {/* Aktualizacje */}
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-slate-200 p-3 text-xs dark:border-white/10">
+          <div className="min-w-0 text-slate-500 dark:text-slate-400">
+            <span className={checkError && status === "idle" ? "text-red-500" : ""}>
+              {statusText}
+            </span>
+            {(status === "available" || status === "downloaded") && (
+              <button
+                onClick={onShowUpdate}
+                className="ml-2 underline underline-offset-2 text-emerald-600 dark:text-emerald-400"
+              >
+                Co nowego
+              </button>
+            )}
+          </div>
+          <button
+            onClick={onCheck}
+            disabled={busy}
+            className="flex flex-shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-slate-600 transition hover:bg-slate-50 disabled:opacity-50 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5"
+          >
+            <RefreshCw size={12} className={status === "checking" ? "animate-spin" : ""} />
+            Sprawdź aktualizacje
+          </button>
         </div>
 
         <a

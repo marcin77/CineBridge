@@ -100,7 +100,6 @@ async function login(email, password, onProgress) {
     if (onProgress) onProgress({ phase: "auth", message: msg });
   };
 
-  // 1. Sprawdz czy Electron ma juz zapisana, wazna sesje
   const existingCookies = await getStoredCookies();
   if (isSessionValid(existingCookies)) {
     log("Znaleziono wazna sesje — logowanie pominiete.");
@@ -116,12 +115,15 @@ async function login(email, password, onProgress) {
     let settled = false;
     let pollInterval = null;
     let revealTimeout = null;
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY_MS = 3000;
 
     const loginWindow = new BrowserWindow({
       width: 480,
       height: 720,
       title: "Logowanie do Filmweb",
-      show: false, // pokaz dopiero jesli automatyczne logowanie sie nie uda (np. captcha)
+      show: false,
       autoHideMenuBar: true,
       webPreferences: {
         partition: PARTITION,
@@ -134,6 +136,23 @@ async function login(email, password, onProgress) {
       if (pollInterval) clearInterval(pollInterval);
       if (revealTimeout) clearTimeout(revealTimeout);
       if (!loginWindow.isDestroyed()) loginWindow.close();
+    }
+
+    function failHard(message) {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(new Error(message));
+    }
+
+    function attemptLoad() {
+      log(
+        retryCount === 0
+          ? "Laduje strone logowania..."
+          : `Ponawiam proba laczenia (${retryCount}/${MAX_RETRIES})...`
+      );
+      currentAttemptFailed = false; // reset przed kazda proba
+      loginWindow.loadURL(LOGIN_URL).catch(() => {});
     }
 
     async function checkLoggedIn() {
@@ -165,45 +184,75 @@ async function login(email, password, onProgress) {
       }
     });
 
-    loginWindow.webContents.on("did-finish-load", async () => {
-      const url = loginWindow.webContents.getURL();
+    // ── Obsluga nieudanej nawigacji (np. ERR_TIMED_OUT) ──────────────────
+loginWindow.webContents.on(
+  "did-fail-load",
+  (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+    if (settled || !isMainFrame) return;
+    if (errorCode === -3) return; // ERR_ABORTED — normalne przy redirectach
 
-      if (url.includes("/login")) {
-        log("Wypelniam formularz logowania automatycznie...");
-        try {
-          await loginWindow.webContents.executeJavaScript(
-            buildAutofillScript(email, password)
-          );
-        } catch (e) {
-          log("Automatyczne wypelnienie nie powiodlo sie: " + e.message);
-        }
+    currentAttemptFailed = true; // ← kluczowe: ustawiamy ZANIM did-finish-load zdąży strzelić
 
-        // Jesli po 3 sekundach nadal nie zalogowano (np. pojawila sie captcha),
-        // pokaz okno zeby user mogl dokonczyc recznie
-        revealTimeout = setTimeout(() => {
-          if (!settled && !loginWindow.isDestroyed()) {
-            log("Wymagana rekacja uzytkownika (mozliwa captcha) — pokazuje okno.");
-            loginWindow.show();
-            loginWindow.focus();
-          }
-        }, 3000);
+    log(`Blad ladowania strony: ${errorDescription} (${errorCode}).`);
+
+    if (revealTimeout) {
+      clearTimeout(revealTimeout);
+      revealTimeout = null;
+    }
+
+    if (retryCount < MAX_RETRIES) {
+      retryCount++;
+      setTimeout(() => {
+        if (!settled) attemptLoad();
+      }, RETRY_DELAY_MS);
+    } else {
+      log("Nie udalo sie polaczyc z Filmweb po kilku probach — pokazuje okno.");
+      if (!loginWindow.isDestroyed()) {
+        loginWindow.show();
+        loginWindow.focus();
       }
-    });
+      failHard(
+        `Nie udalo sie zaladowac strony logowania (${errorDescription}). ` +
+        `Sprawdz polaczenie z internetem i sprobuj ponownie.`
+      );
+    }
+  }
+);
 
-    loginWindow.loadURL(LOGIN_URL);
+loginWindow.webContents.on("did-finish-load", async () => {
+  if (currentAttemptFailed) return; // ← ignoruj finish-load po nieudanej nawigacji
 
-    // Sprawdzaj co 1s czy sesja juz jest wazna
+  const url = loginWindow.webContents.getURL();
+  if (url.startsWith("chrome-error://")) return; // dodatkowe zabezpieczenie, zostaw
+
+  if (url.includes("/login")) {
+    log("Wypelniam formularz logowania automatycznie...");
+    try {
+      await loginWindow.webContents.executeJavaScript(
+        buildAutofillScript(email, password)
+      );
+    } catch (e) {
+      log("Automatyczne wypelnienie nie powiodlo sie: " + e.message);
+    }
+
+    revealTimeout = setTimeout(() => {
+      if (!settled && !loginWindow.isDestroyed()) {
+        log("Wymagana rekacja uzytkownika (mozliwa captcha) — pokazuje okno.");
+        loginWindow.show();
+        loginWindow.focus();
+      }
+    }, 3000);
+  }
+});
+
+    attemptLoad();
+
     pollInterval = setInterval(checkLoggedIn, 1000);
 
-    // Bezpiecznik - 3 minuty na zalogowanie (w tym reczne rozwiazanie captchy)
     setTimeout(() => {
       if (!settled) {
-        settled = true;
-        cleanup();
-        reject(
-          new Error(
-            "Timeout logowania (3 minuty). Sprawdz dane logowania lub sprobuj ponownie."
-          )
+        failHard(
+          "Timeout logowania (3 minuty). Sprawdz dane logowania lub sprobuj ponownie."
         );
       }
     }, 3 * 60 * 1000);

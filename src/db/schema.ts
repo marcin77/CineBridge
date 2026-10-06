@@ -56,6 +56,7 @@ export const mediaItems = sqliteTable(
     // Sezony / odcinki (type = "season" | "episode")
     parentShowId: text("parent_show_id"),      // filmweb ID serialu-rodzica
     seasonNumber: integer("season_number"),
+    seasonShowSeasonNumber: integer("season_show_season_number"),
     episodeNumber: integer("episode_number"),
     episodeTitle: text("episode_title"),
     episodeTitleEn: text("episode_title_en"),
@@ -64,6 +65,7 @@ export const mediaItems = sqliteTable(
 
     imdbId: text("imdb_id"),
     tmdbId: text("tmdb_id"),
+    seasonShowTmdbId: text("season_show_tmdb_id"), 
     matchedTitle: text("matched_title"),
     matchedYear: integer("matched_year"),
     matchConfidence: integer("match_confidence"),

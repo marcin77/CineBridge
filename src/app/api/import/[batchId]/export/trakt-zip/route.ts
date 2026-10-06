@@ -109,6 +109,41 @@ export async function GET(
   const parentOf = (i: Item): Item =>
     (i.parentShowId && showsBySourceId.get(String(i.parentShowId))) || i;
 
+  const seasonMeta = new Map<string, Item>();
+for (const i of items) {
+  if (i.type === "season" && i.parentShowId && i.seasonNumber != null) {
+    seasonMeta.set(`${i.parentShowId}:${i.seasonNumber}`, i);
+  }
+}
+
+// Helper zastępu bjący parentOf() wszędzie, gdzie dotyczy season/episode:
+function showForEpisodeOrSeason(i: Item): Item {
+  const parent = parentOf(i);
+  if (!i.parentShowId || i.seasonNumber == null) return parent;
+  const s = seasonMeta.get(`${i.parentShowId}:${i.seasonNumber}`);
+  if (!s?.seasonShowTmdbId) return parent;
+
+  const isDifferentInstallment = s.seasonShowTmdbId !== parent.tmdbId;
+  if (!isDifferentInstallment) return { ...parent, tmdbId: s.seasonShowTmdbId };
+
+  // Inna instalacja TMDB (antologia) — tytuł show'a-rodzica jest nieprawidłowy,
+  // używamy season_title zescrapowanego z Filmweb dla tego konkretnego sezonu.
+  return {
+    ...parent,
+    tmdbId: s.seasonShowTmdbId,
+    title: s.seasonTitle || parent.title,
+    originalTitle: s.seasonTitle || parent.originalTitle,
+    matchedTitle: s.seasonTitle || null,
+    matchedYear: s.seasonYear ?? parent.matchedYear,
+  };
+}
+
+function effectiveSeasonNumber(i: Item): number | null {
+  if (!i.parentShowId || i.seasonNumber == null) return i.seasonNumber;
+  const s = seasonMeta.get(`${i.parentShowId}:${i.seasonNumber}`);
+  return s?.seasonShowSeasonNumber ?? i.seasonNumber;
+}
+
   const watched = (t: string) => items.filter(i => i.category === "watched" && i.type === t);
   const rated   = (t: string) => items.filter(i => i.userRating && i.type === t);
 
@@ -130,17 +165,17 @@ export async function GET(
 
   const ratingsSeasons = rated("season").map(i => ({
     rated_at: iso(i.ratedAt), rating: i.userRating, type: "season",
-    season: { number: i.seasonNumber, ids: { trakt: null, tvdb: null, tmdb: null, tvrage: null } },
-    show: showObj(parentOf(i)),
+    season: { number: effectiveSeasonNumber(i), ids: { trakt: null, tvdb: null, tmdb: null, tvrage: null } },
+    show: showObj(showForEpisodeOrSeason(i)),   // ← było: showObj(parentOf(i))
   }));
 
   const ratingsEpisodes = rated("episode").map(i => ({
     rated_at: iso(i.ratedAt), rating: i.userRating, type: "episode",
     episode: {
-      season: i.seasonNumber, number: i.episodeNumber, title: i.episodeTitle ?? null,
+      season: effectiveSeasonNumber(i), number: i.episodeNumber, title: i.episodeTitle ?? null,
       ids: { trakt: null, tvdb: null, imdb: null, tmdb: null, tvrage: null },
     },
-    show: showObj(parentOf(i)),
+    show: showObj(showForEpisodeOrSeason(i)),   // ← było: showObj(parentOf(i))
   }));
 
   // ── watched ──
@@ -171,19 +206,19 @@ export async function GET(
   }));
 
   const historyEpisodes = watched("episode").map(i => {
-    const parent = parentOf(i);
+    const show = showForEpisodeOrSeason(i);
     return {
       id: historyIdCounter++,
       watched_at: iso(i.watchedAt ?? i.ratedAt),
       action: "watch",
       type: "episode",
       episode: {
-        season: i.seasonNumber,
+        season: effectiveSeasonNumber(i),
         number: i.episodeNumber,
         title: i.episodeTitle ?? null,
         ids: { trakt: null, tvdb: null, imdb: null, tmdb: null, tvrage: null },
       },
-      show: showObj(parent),
+      show: showObj(show),
     };
   });
 
@@ -208,42 +243,42 @@ export async function GET(
 
   // ── comments — POPRAWKA: sezon i odcinek mają prawdziwe komentarze ──
   const commentEntry = (i: Item) => {
-    const parent = parentOf(i);
-    const base = {
-      comment: {
-        id: i.id,
-        comment: i.comment,
-        spoiler: false,
-        review: false,
-        parent_id: 0,
-        created_at: iso(i.ratedAt ?? i.watchedAt ?? i.createdAt),
-        updated_at: iso(i.ratedAt ?? i.watchedAt ?? i.createdAt),
-        replies: 0,
-        likes: 0,
-        user_rating: i.userRating ?? null,
-        language: "pl",
-      },
-    };
-
-    if (i.type === "movie")   return { type: "movie",   movie:   movieObj(i), ...base };
-    if (i.type === "show")    return { type: "show",    show:    showObj(i),  ...base };
-    if (i.type === "season")  return {
-      type: "season",
-      season: { number: i.seasonNumber, ids: { trakt: null, tvdb: null, tmdb: null, tvrage: null } },
-      show: showObj(parent),
-      ...base,
-    };
-    // episode
-    return {
-      type: "episode",
-      episode: {
-        season: i.seasonNumber, number: i.episodeNumber, title: i.episodeTitle ?? null,
-        ids: { trakt: null, tvdb: null, imdb: null, tmdb: null, tvrage: null },
-      },
-      show: showObj(parent),
-      ...base,
-    };
+  const show = showForEpisodeOrSeason(i);
+  const base = {
+    comment: {
+      id: i.id,
+      comment: i.comment,
+      spoiler: false,
+      review: false,
+      parent_id: 0,
+      created_at: iso(i.ratedAt ?? i.watchedAt ?? i.createdAt),
+      updated_at: iso(i.ratedAt ?? i.watchedAt ?? i.createdAt),
+      replies: 0,
+      likes: 0,
+      user_rating: i.userRating ?? null,
+      language: "pl",
+    },
   };
+
+  if (i.type === "movie")   return { type: "movie",   movie:   movieObj(i), ...base };
+  if (i.type === "show")    return { type: "show",    show:    showObj(i),  ...base };
+  if (i.type === "season")  return {
+    type: "season",
+    season: { number: effectiveSeasonNumber(i), ids: { trakt: null, tvdb: null, tmdb: null, tvrage: null } },
+    show: showObj(show),
+    ...base,
+  };
+  // episode
+  return {
+    type: "episode",
+    episode: {
+      season: effectiveSeasonNumber(i), number: i.episodeNumber, title: i.episodeTitle ?? null,
+      ids: { trakt: null, tvdb: null, imdb: null, tmdb: null, tvrage: null },
+    },
+    show: showObj(show),
+    ...base,
+  };
+};
 
   const hasComment = (i: Item) => !!(i.comment && i.comment.trim() !== "");
 

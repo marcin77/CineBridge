@@ -248,16 +248,26 @@ async function resolveSeason(parentShowId: string, seasonNumber: number) {
     }
   }
 
-  const resolved = { seasonId, episodeShowId, episodeSeasonNumber };
-  seasonCache.set(cacheKey, resolved);
+const resolved = { seasonId, episodeShowId, episodeSeasonNumber };
+seasonCache.set(cacheKey, resolved);
 
-  if (seasonId) {
-    await db.update(mediaItems)
-      .set({ tmdbId: seasonId, updatedAt: new Date().toISOString() })
-      .where(and(eq(mediaItems.importBatchId, id), eq(mediaItems.type, "season"), eq(mediaItems.parentShowId, parentShowId), eq(mediaItems.seasonNumber, seasonNumber)));
-  }
+if (seasonId) {
+  await db.update(mediaItems)
+    .set({
+      tmdbId: seasonId,
+      seasonShowTmdbId: episodeShowId,
+      seasonShowSeasonNumber: episodeSeasonNumber,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(and(
+      eq(mediaItems.importBatchId, id),
+      eq(mediaItems.type, "season"),
+      eq(mediaItems.parentShowId, parentShowId),
+      eq(mediaItems.seasonNumber, seasonNumber),
+    ));
+}
 
-  return resolved;
+return resolved;
 }
 
   // ── Odcinki: przetwarzanie z izolacją błędów per-item ───────────────────

@@ -11,7 +11,6 @@ console.log("[NextServer] Katalog aplikacji:", dir);
 console.log("[NextServer] DATABASE_PATH:", process.env.DATABASE_PATH);
 
 const serverScript = path.join(dir, "server.js");
-
 console.log("[NextServer] Uruchamiam serwer:", serverScript);
 
 // Uruchom server.js jako osobny proces Node.js (nie require)
@@ -25,6 +24,19 @@ const serverProcess = spawn("node", [serverScript], {
   },
   stdio: "inherit",
 });
+
+// ── Sprzątanie: nigdy nie zostawiaj prawdziwego serwera bez opiekuna ──
+let shuttingDown = false;
+function shutdown(code = 0) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  try { serverProcess.kill("SIGTERM"); } catch {}
+  process.exit(code);
+}
+process.on("disconnect", () => shutdown(0));  // Electron zniknął (też kill -9)
+process.on("SIGTERM", () => shutdown(0));     // before-quit → nextServerProcess.kill()
+process.on("SIGINT", () => shutdown(0));
+process.on("exit", () => { try { serverProcess.kill("SIGTERM"); } catch {} });
 
 serverProcess.on("error", (err) => {
   console.error("[NextServer] Błąd procesu:", err);
@@ -40,20 +52,17 @@ serverProcess.on("exit", (code) => {
 function checkServer(attempts = 0) {
   if (attempts > 30) {
     console.error("[NextServer] Timeout - serwer nie odpowiada");
-    process.exit(1);
+    shutdown(1);
+    return;
   }
 
   const req = http.get(`http://127.0.0.1:${port}`, (res) => {
+    res.resume();
     console.log("[NextServer] Gotowy na porcie", port);
-    if (process.send) {
-      process.send("ready");
-    }
+    if (process.send) process.send("ready");
   });
 
-  req.on("error", () => {
-    setTimeout(() => checkServer(attempts + 1), 300);
-  });
-
+  req.on("error", () => setTimeout(() => checkServer(attempts + 1), 300));
   req.end();
 }
 

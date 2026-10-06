@@ -177,10 +177,15 @@ const UNIVERSAL_HEADER = [
   "filmweb_id", "imdb_id", "tmdb_id",
   "category", "user_rating", "rated_at", "watched_at", "comment",
   "list_name", "list_id", "list_status", "favorite",
-  "parent_show_id", "season_number", "episode_number", "episode_title", "episode_title_en",
+  "parent_show_id", "season_number", "season_title", "episode_number", "episode_title", "episode_title_en",
 ];
 
-function toUniversalRow(item: MediaItem): string {
+function toUniversalRow(item: MediaItem, seasonMeta: Map<string, MediaItem>): string {
+  const inherited = item.type === "episode" && item.parentShowId && item.seasonNumber != null
+    ? seasonMeta.get(`${item.parentShowId}:${item.seasonNumber}`)
+    : null;
+  const seasonTitleValue = item.type === "season" ? (item.seasonTitle ?? "") : (inherited?.seasonTitle ?? "");
+
   return [
     item.type,
     cleanTitle(item.title),
@@ -201,12 +206,12 @@ function toUniversalRow(item: MediaItem): string {
     item.favorite ?? "",
     item.parentShowId ?? "",
     item.seasonNumber ?? "",
+    seasonTitleValue,
     item.episodeNumber ?? "",
     item.episodeTitle ?? "",
     item.episodeTitleEn ?? "",
   ].map(csvEscape).join(",");
 }
-
 function cleanTitle(title: string | null | undefined): string {
   if (!title) return "";
   return title
@@ -218,7 +223,13 @@ function cleanTitle(title: string | null | undefined): string {
 }
 
 export function buildUniversalCsv(items: MediaItem[]): string {
-  const rows = items.map(toUniversalRow);
+  const seasonMeta = new Map<string, MediaItem>();
+  for (const i of items) {
+    if (i.type === "season" && i.parentShowId && i.seasonNumber != null) {
+      seasonMeta.set(`${i.parentShowId}:${i.seasonNumber}`, i);
+    }
+  }
+  const rows = items.map((item) => toUniversalRow(item, seasonMeta));
   return [UNIVERSAL_HEADER.join(","), ...rows].join("\n");
 }
 

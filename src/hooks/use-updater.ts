@@ -1,20 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import type { ReleaseNotes } from "@/lib/release-notes";
 
 export type UpdaterStatus =
-  | "idle"
-  | "checking"
-  | "available"
-  | "not-available"
-  | "downloading"
-  | "downloaded"
-  | "error";
+  | "idle" | "checking" | "available" | "not-available"
+  | "downloading" | "downloaded" | "error";
 
-interface UpdateInfo {
+export interface UpdateInfo {
   version: string;
   releaseDate?: string;
-  releaseNotes?: string;
+  releaseNotes?: ReleaseNotes;
 }
 
 interface ProgressInfo {
@@ -25,30 +21,29 @@ interface ProgressInfo {
 }
 
 interface UseUpdaterResult {
-  isElectron: boolean;
   status: UpdaterStatus;
   updateInfo: UpdateInfo | null;
   progress: ProgressInfo | null;
-  errorMessage: string | null;
+  errorMessage: string | null;   // błąd pobierania
+  checkError: string | null;     // błąd sprawdzania
   checkForUpdates: () => Promise<void>;
   downloadUpdate: () => Promise<void>;
   installUpdate: () => Promise<void>;
 }
 
-// Ponowne sprawdzenie nie może zrzucić UI z available/downloading/downloaded
 const BUSY: UpdaterStatus[] = ["available", "downloading", "downloaded"];
 const keep = (prev: UpdaterStatus, next: UpdaterStatus): UpdaterStatus =>
   BUSY.includes(prev) ? prev : next;
 
 export function useUpdater(): UseUpdaterResult {
-  const isElectron =
-    typeof window !== "undefined" && !!(window as any).electronAPI;
   const [status, setStatus] = useState<UpdaterStatus>("idle");
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [progress, setProgress] = useState<ProgressInfo | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [checkError, setCheckError] = useState<string | null>(null);
 
   const listenersAttached = useRef(false);
+  const downloadingRef = useRef(false);
 
   function attachListeners() {
     if (listenersAttached.current) return;
@@ -57,7 +52,7 @@ export function useUpdater(): UseUpdaterResult {
 
     api.onUpdaterChecking(() => {
       setStatus((p) => keep(p, "checking"));
-      setErrorMessage(null);
+      setCheckError(null);
     });
 
     api.onUpdaterAvailable((data: UpdateInfo) => {
@@ -80,33 +75,45 @@ export function useUpdater(): UseUpdaterResult {
     });
 
     api.onUpdaterError((data: { message: string }) => {
-      setStatus("error");
-      setErrorMessage(data.message);
+      if (downloadingRef.current) {
+        setStatus("error");
+        setErrorMessage(data.message);
+      } else {
+        // błąd sprawdzania: nie ruszamy available/downloaded, tylko zdejmujemy "checking"
+        setCheckError(data.message);
+        setStatus((p) => (p === "checking" ? "idle" : p));
+      }
     });
   }
 
   const checkForUpdates = useCallback(async () => {
     const api = (window as any).electronAPI;
     if (!api) return;
+    setCheckError(null);
     setStatus((p) => keep(p, "checking"));
     const res = await api.checkForUpdates();
     if (!res.success) {
-      // Np. tryb dev / build niespakowany — nie pokazujemy błędu użytkownikowi
-      console.warn("[Updater] checkForUpdates:", res.error);
-      setStatus((p) => keep(p, "idle"));
+      // np. tryb dev (niespakowana aplikacja) albo brak sieci
+      setCheckError(res.error ?? "Nie udało się sprawdzić aktualizacji");
+      setStatus((p) => (p === "checking" ? "idle" : p));
     }
   }, []);
 
   const downloadUpdate = useCallback(async () => {
     const api = (window as any).electronAPI;
     if (!api) return;
+    downloadingRef.current = true;
     setStatus("downloading");
     setProgress(null);
     setErrorMessage(null);
-    const res = await api.downloadUpdate();
-    if (!res.success) {
-      setStatus("error");
-      setErrorMessage(res.error ?? "Nie udało się pobrać aktualizacji");
+    try {
+      const res = await api.downloadUpdate();
+      if (!res.success) {
+        setStatus("error");
+        setErrorMessage(res.error ?? "Nie udało się pobrać aktualizacji");
+      }
+    } finally {
+      downloadingRef.current = false;
     }
   }, []);
 
@@ -117,29 +124,18 @@ export function useUpdater(): UseUpdaterResult {
   }, []);
 
   useEffect(() => {
-    const hasElectronApi = !!(window as any).electronAPI;
-    if (!hasElectronApi) return;
-
+    if (!(window as any).electronAPI) return;
     attachListeners();
-
-    // Ciche sprawdzenie przy starcie — UI reaguje dopiero gdy przyjdzie event
-    // Odrocz wywołanie, aby nie aktualizować stanu synchronicznie w efekcie.
-    const checkTimer = window.setTimeout(() => {
-      void checkForUpdates();
+    // Defer the initial check so state updates do not run synchronously in the effect.
+    const timeout = window.setTimeout(() => {
+      void checkForUpdates(); // ciche sprawdzenie przy starcie
     }, 0);
-
-    return () => window.clearTimeout(checkTimer);
+    return () => window.clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return {
-    isElectron,
-    status,
-    updateInfo,
-    progress,
-    errorMessage,
-    checkForUpdates,
-    downloadUpdate,
-    installUpdate,
+    status, updateInfo, progress, errorMessage, checkError,
+    checkForUpdates, downloadUpdate, installUpdate,
   };
 }
