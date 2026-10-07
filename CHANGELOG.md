@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.5.2]
+
+Poprawka krytyczna.
+
+### 🐛 Naprawiono
+
+- **Brakująca migracja bazy danych** powodowała błąd `SqliteError: table media_items
+  has no column named season_show_season_number` przy każdej próbie importu pliku
+  CSV zawierającego sezony/odcinki seriali, na świeżej instalacji 1.5.1 (AppImage
+  i każda inna instalacja bez wcześniej ręcznie zmodyfikowanej bazy deweloperskiej).
+  Kolumny `season_show_tmdb_id` i `season_show_season_number` zostały dodane do
+  `schema.ts` w 1.5.1, ale odpowiadający plik migracji Drizzle nigdy nie został
+  wygenerowany i zacommitowany — zmiana działała wyłącznie na bazie deweloperskiej,
+  na której te kolumny dodano ręcznie przez `sqlite3` w trakcie prac nad poprawką.
+  Dodano `drizzle/0007_strong_johnny_storm.sql`.
+
+### 📝 Znane ryzyko dla użytkowników 1.5.1
+- Jeśli ktoś zainstalował 1.5.1 i próbował importować plik z serialami, import
+najprawdopodobniej zatrzymał się w trakcie przetwarzania — w historii importów
+widoczne są wiersze ze statusem "Wczytano", które nigdy nie przeszły dalej.
+Po aktualizacji do 1.5.2 zalecane jest usunięcie takich niekompletnych batchy
+z historii importów i ponowne wgranie pliku.
+
 ## [1.5.1]
 
 ### ✨ Dodano
@@ -13,9 +36,29 @@
   od tego, którego sezonu faktycznie dotyczył wpis. Dodano kolumny `season_show_tmdb_id` i `season_show_season_number`, wypełniane w `resolveSeason()` dla każdego sezonu z osobna (wcześniej zapisywane tylko dla `season_number === 1`). Eksport ZIP koryguje `show.title`/`show.ids.tmdb`/`season.number` (i analogicznie dla odcinków) na podstawie tych kolumn zamiast statycznego wiersza show-rodzica.
 - **Universal CSV**: dodano kolumnę `season_title`,
   dziedziczoną przez wiersze `episode` z rodzica `season`.
+- **Logowanie do Filmweb** Nieudana nawigacja na stronę logowania (`ERR_TIMED_OUT` i
+  inne) powodowała puste, białe okno logowania bez formularza i bez możliwości rozwiązania captchy. Przyczyna: `did-finish-load` wykonywał się mimo nieudanego
+  załadowania strony (Chromium w niektórych przypadkach nie zmienia
+  `getURL()` na `chrome-error://` przy błędzie nawigacji), więc kod próbował
+  wypełnić formularz na niezaładowanej stronie.
+- Dodano obsługę `did-fail-load` z automatycznym ponawianiem (3 próby,
+  3 s odstępu) oraz flagę `currentAttemptFailed` blokującą fałszywe
+  wykonanie autofill po błędzie.
+- Zdiagnozowano i naprawiono przypadek uszkodzonej partycji sesji
+  (`persist:filmweb`) powodującej uporczywy `ERR_TIMED_OUT` tylko w tej
+  partycji (potwierdzone: `curl` i świeża partycja testowa łączyły się
+  natychmiast). Przy wyczerpaniu wszystkich prób logowania, sesja jest
+  czyszczona (`clearSession()`) i proces logowania ponawiany automatycznie
+  od zera, zanim zgłoszony zostanie błąd użytkownikowi.
 - Zabijanie serwera przy wyjściu, także przy
   quitAndInstall: before-quit
-- 
+
+### 🎨 Zmieniono
+- `BatchListManager`: kolumna „Plik" w historii importów poszerzona
+  (`max-w-[200px]` → `max-w-[360px]`) i wzbogacona o atrybut `title`
+  z pełną nazwą pliku w tooltipie — długie nazwy eksportów CSV ze scrapera
+  przestały się nieczytelnie ucinać.
+  
 ### 📝 Notatka
 - po aktualizacji do wersji z tą poprawką, dla już 
   przetworzonych antologii wykonaj ręczny reset tmdb_searched i ponów matching, żeby dociągnąć season_show_tmdb_id".
