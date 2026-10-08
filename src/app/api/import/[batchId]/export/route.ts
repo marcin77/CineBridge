@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { importBatches, mediaItems } from "@/db/schema";
 import { asc, desc, eq } from "drizzle-orm";
 import { buildCsv, csvFilename, type ExportFormat } from "@/lib/csv-export";
-import { getExportItems } from "@/lib/export-utils";
+import { getExportItems, getExportItemsForSimkl } from "@/lib/export-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -24,9 +24,11 @@ export async function GET(
   const [batch] = await db.select().from(importBatches).where(eq(importBatches.id, id));
   if (!batch) return Response.json({ error: "Nie znaleziono importu." }, { status: 404 });
 
-const onlyNew = new URL(req.url).searchParams.get("onlyNew") === "true";
-const items = await getExportItems(id, onlyNew);
-
+  const onlyNew = new URL(req.url).searchParams.get("onlyNew") === "true";
+  const items =
+    fmt === "simkl"
+      ? await getExportItemsForSimkl(id, onlyNew)
+      : await getExportItems(id, onlyNew);
 
   const csv      = buildCsv(items, fmt);
   const filename = csvFilename(batch.filename, fmt);
@@ -37,4 +39,5 @@ const items = await getExportItems(id, onlyNew);
       "Content-Disposition": `attachment; filename="${filename}"`,
     },
   });
+  
 }

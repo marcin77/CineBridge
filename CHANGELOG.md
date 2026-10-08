@@ -1,5 +1,42 @@
 # Changelog
 
+## [1.5.3]
+
+### 🐛 Naprawiono
+
+- **Linux .deb** Zduplikowane pole `License` w pliku `control` paczki `.deb` powodowało błąd
+  `dpkg: błąd przetwarzania archiwum... powielona wartość pola definiowanego
+  przez użytkownika "License"`, uniemożliwiający instalację. Przyczyna:
+  `electron-builder.yml` miał ręcznie dodane `fpm: ["--deb-field=License: MIT"]`
+  w sekcji `deb`, które dublowało się z polem `License` generowanym automatycznie
+  przez `electron-builder` z `package.json → license`. Usunięto zbędny blok `fpm`.
+  Dotyczyło wyłącznie `.deb` — AppImage nie ma tego problemu (inny format
+  pakowania bez pliku `control`), `.rpm` miał już analogiczną linię zakomentowaną
+  wcześniej.
+
+- **Okno aktualizacji — formatowanie „Co nowego”** Tekst release notes renderował się z błędnymi złamaniami linii w środku zdań,
+  gdy źródłowy `CHANGELOG.md` zawierał twarde entery z zawijania linii w edytorze
+  (hard-wrap). GitHub renderuje pojedyncze newliny wewnątrz punktów listy jako
+  realne `<br>`, a `releaseNotesToText()` wiernie je odtwarzała jako złamania
+  linii w oknie aplikacji. Poprawiono: pojedyncze newliny wewnątrz punktu/akapitu
+  są teraz scalane w spację, tylko podwójne (prawdziwe granice punktów/akapitów,
+  wstawiane explicite przy przetwarzaniu `<li>`/`<p>`/`<br>`) pozostają jako
+  złamanie linii.
+
+- **Eksport Simkl — „tylko nowe pozycje” dla seriali z nowymi sezonami** Eksport przyrostowy (`onlyNew=true`) filtruje pozycje po `source_id`, który
+  nie występował w poprzednich batchach. Dla serialu z nowym sezonem/odcinkami
+  (unikalny `source_id`) ale „starym” wierszem `show` (ten sam `source_id` od
+  dawna w bazie) filtr poprawnie uznawał `season`/`episode` za nowe, ale
+  wykluczał jedyny wiersz `show`, na którym Simkl mógłby oprzeć eksport —
+  Simkl operuje wyłącznie na poziomie show (`LastEpWatched` jako pojedyncza
+  kolumna, nie osobne wiersze per sezon). Efekt: serial z nowo obejrzanymi
+  odcinkami znikał całkowicie z eksportu Simkl „tylko nowe”, mimo że dla Trakta
+  (który eksportuje season/episode niezależnie) te same dane trafiały poprawnie.
+  Naprawiono: nowa funkcja `getExportItemsForSimkl()` dociąga z powrotem wiersz
+  `show` z tego samego batcha, jeśli któreś z jego `season`/`episode` przeszły
+  filtr „tylko nowe”. Dotyczy wyłącznie formatu Simkl — Trakt/Universal/Letterboxd
+  bez zmian (tam nie było to potrzebne).
+
 ## [1.5.2]
 
 Poprawka krytyczna.

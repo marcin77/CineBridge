@@ -68,13 +68,9 @@ deb:
   artifactName: CineBridge-${version}-${arch}.deb
   afterInstall: build/postinst-icons.sh
   afterRemove: build/postrm-icons.sh
-  fpm:
-    - "--deb-field=License: MIT"
 
 rpm:
   artifactName: CineBridge-${version}-${arch}.rpm
- # fpm:
- #     - "--rpm-tag=%license LICENSE" 
 
 win:
   target:
